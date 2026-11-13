@@ -7554,6 +7554,360 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'xero-h1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Xero, the accounting software company with 5.1 million customers, most of them small
+        businesses, reported its results for the six months to 30 September 2026 before the
+        market opened on 12 November. All of Xero’s figures are in New Zealand dollars. In
+        short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> NZ$1,745 million, up 46%. Without the US payments business
+          Melio, which Xero did not own a year earlier, the comparable growth was 27%.
+        </li>
+        <li>
+          <strong>Net profit:</strong> NZ$18.5 million, down 86% from NZ$134.8 million.
+        </li>
+        <li>
+          <strong>Customers:</strong> 5,146,000, up 12%, after adding 226,000 in the half.
+        </li>
+        <li>
+          <strong>The outlook:</strong> revenue for the year to March 2027 now expected to be
+          NZ$3,770 million to NZ$3,830 million, up from NZ$3,620 million to NZ$3,730 million.
+        </li>
+        <li>
+          <strong>A buy-back:</strong> Xero will buy back up to A$1 billion of its own shares
+          over the next 12 months.
+        </li>
+        <li>
+          <strong>Its finance chief is leaving:</strong> Claire Bramley will step down as chief
+          financial officer on 31 January 2027.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 6.1% on results day, to A$75.17.
+        </li>
+      </ul>
+
+      <h2>Revenue up 46%, profit down 86%: why both are true</h2>
+      <p>
+        The two headline numbers point in opposite directions, and both are right. The gap is
+        Melio, a US bill-payments company Xero agreed to buy in June 2025 for an upfront US$2.5
+        billion. This was the first half-year with Melio in it for all six months, and Melio is
+        still losing money: Xero says it expects Melio to reach break-even, on its adjusted
+        EBITDA measure, in the second half of the year to March 2028.
+      </p>
+      <p>
+        Melio adds revenue, which is why revenue jumped. But it also changed the rest of the
+        profit and loss statement. Net profit fell by NZ$116.3 million, and Xero’s own figures
+        show where it went:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Revenue up 46%, profit down 86%: why both are true"
+        columns={[
+          { key: 'c0', label: 'Six months to 30 September, NZ$', width: '40%' },
+          { key: 'c1', label: '2025', width: '20%' },
+          { key: 'c2', label: '2026', width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Operating income', c1: '137.1M', c2: '124.5M', c3: '−12.6M' } },
+          { cells: { c0: 'Other income and expenses', c1: '+77.6M', c2: '−14.1M', c3: '−91.7M' } },
+          { cells: { c0: 'Net finance income or expense', c1: '+17.0M', c2: '−78.0M', c3: '−95.1M' } },
+          { cells: { c0: 'Income tax', c1: '−96.4M', c2: '−13.3M', c3: '+83.0M' } },
+          { cells: { c0: 'Net profit', c1: '134.8M', c2: '18.5M', c3: '−116.3M' } },
+        ]}
+      />
+      <p>
+        *The table leaves out small losses on asset disposals, NZ$0.6 million and NZ$0.5
+        million, so its rows add up to within NZ$0.1 million of the change.*
+      </p>
+      <p>
+        Reading it line by line:
+      </p>
+      <ul>
+        <li>
+          <strong>Operating income fell 9%.</strong> That is gross profit less operating costs.
+          Payments carry a lower gross margin than software subscriptions, so Xero’s gross
+          margin fell from 88.5% to 76.0%.
+        </li>
+        <li>
+          <strong>Last year had a one-off gain.</strong> A year earlier, Xero booked NZ$77.6
+          million of foreign-exchange gains, which it says were on US dollar funds it was
+          holding to buy Melio. This year, the same line was a NZ$14.1 million cost.
+        </li>
+        <li>
+          <strong>Interest went from income to a cost.</strong> A year ago Xero earned interest
+          on the cash it had raised for Melio. That cash has now been spent, and Xero pays
+          interest on money it borrowed for the deal. Finance income fell from NZ$73.4 million
+          to NZ$20.0 million, and finance costs rose from NZ$56.4 million to NZ$98.0 million.
+        </li>
+        <li>
+          <strong>Tax was much lower,</strong> which softened the fall. Xero says that was
+          largely because it recognised part of the value of past US tax losses.
+        </li>
+      </ul>
+      <p>
+        On Xero’s adjusted measures, which add back one-off and non-cash items, the picture is
+        different. Adjusted EBITDA rose 3% to NZ$361.6 million. And on a pro-forma basis, which
+        counts Melio in both years so the two halves can be compared, adjusted EBITDA rose 23%
+        and free cash flow rose 32% to NZ$238.1 million. On the reported figures, free cash flow
+        fell 26%.
+      </p>
+
+      <h2>Three ways to measure the growth</h2>
+      <p>
+        Xero quotes its growth three ways, and they give three different answers for revenue:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Three ways to measure the growth"
+        columns={[
+          { key: 'c0', label: 'Revenue growth, six months to 30 September 2026', width: '50%' },
+          { key: 'c1', label: 'Measure', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Reported', c1: '+46%' } },
+          { cells: { c0: 'Reported, at constant currency', c1: '+41%' } },
+          { cells: { c0: 'Pro-forma (as if Xero had owned Melio a year earlier)', c1: '+27%' } },
+        ]}
+      />
+      <p>
+        Constant currency removes the effect of exchange rates, and the New Zealand dollar was
+        weaker, which made revenue earned in Australian dollars, pounds and US dollars worth
+        more. Pro-forma is the closest to a like-for-like comparison.
+      </p>
+
+      <h2>Where the growth came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the growth came from"
+        columns={[
+          { key: 'c0', label: 'Six months to 30 September 2026', width: '40%' },
+          { key: 'c1', label: 'Revenue, NZ$', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Growth', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Customers', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Australia', c1: '670M', c2: '+23%', c3: '2,192,000' } },
+          { cells: { c0: 'New Zealand', c1: '125M', c2: '+6%', c3: '656,000' } },
+          { cells: { c0: 'United Kingdom', c1: '419M', c2: '+24%', c3: '1,404,000' } },
+          { cells: { c0: 'United States', c1: '365M', c2: '+51% pro-forma', c3: '455,000' } },
+        ]}
+      />
+      <ul>
+        <li>
+          <strong>Australia</strong> is still the biggest market: revenue up 23%, or 17% at
+          constant currency, and 2,192,000 customers, up 9%. New Zealand, where Xero started,
+          added 6,000 customers in the half.
+        </li>
+        <li>
+          <strong>The UK</strong> added 85,000 customers in the half, against 56,000 a year
+          earlier. Xero tied that partly to Making Tax Digital, a UK rule that moves more small
+          businesses onto digital tax records.
+        </li>
+        <li>
+          <strong>The US</strong> is where Melio sits. On a pro-forma basis, US revenue rose 51%
+          and payments revenue 62%.
+        </li>
+      </ul>
+      <p>
+        Across the group, average revenue per customer rose 25% to NZ$62.21 a month, helped by
+        Melio’s bigger customers, by price rises and by payments. Xero says more price rises
+        come through in the second half.
+      </p>
+
+      <h2>The A$1 billion buy-back</h2>
+      <p>
+        Xero will buy back up to A$1 billion of its own shares on the ASX over the next 12
+        months, starting on or after 13 November. That is up to 14,320,554 shares, based on the
+        average price over the five days to 11 November of A$69.83. At the 12 November close,
+        A$1 billion was 7.8% of Xero’s market value of A$12.8 billion.
+      </p>
+      <p>
+        Xero’s board says the program is a good use of capital “as the current share price does
+        not reflect Xero’s long-term value and growth potential”. That is Xero’s view of its own
+        shares, not ours. Xero says part of the program is meant to offset the new shares it
+        expects to issue to staff in the year to March 2028.
+      </p>
+      <p>
+        It is a reversal of direction. In June 2025, to help pay for Melio, Xero sold about 10.5
+        million new shares at A$176 each, raising A$1.85 billion. On the day before the buy-back
+        was announced, the shares closed at A$70.86.
+      </p>
+
+      <h2>The outlook</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook"
+        columns={[
+          { key: 'c0', label: 'Year to March 2027, NZ$', width: '40%' },
+          { key: 'c1', label: 'Before', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Now', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '3,620M to 3,730M', c2: '3,770M to 3,830M' } },
+          { cells: { c0: 'Adjusted EBITDA', c1: '860M to 920M', c2: '880M to 920M' } },
+        ]}
+      />
+      <p>
+        Xero says the higher revenue forecast “largely reflects stronger Melio payments
+        performance alongside an FX benefit from the weaker NZD”. It now expects revenue of more
+        than NZ$4.6 billion in the year to March 2028.
+      </p>
+      <p>
+        Chief executive Sukhinder Singh Cassidy said: “Our H1 FY27 results show we’re continuing
+        to do what we said we’d do, delivering strong macro-resilient growth at scale with
+        momentum across every region.”
+      </p>
+      <p>
+        On AI, which investors have worried could replace accounting software, she said: “Our
+        infrastructure, data, scale and trust advantages position Xero well and help customers
+        continue to benefit in the agentic era.”
+      </p>
+      <p>
+        These are Xero’s views of its own business, not ours.
+      </p>
+
+      <h2>Its finance chief is leaving</h2>
+      <p>
+        On the same morning, Xero said chief financial officer Claire Bramley had decided to
+        leave to take up a new role with another global organisation. She stays until 31 January
+        2027, and Xero will run a global search for her successor.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Xero’s shares closed at A$70.86 on 11 November. On 12 November, results day, they closed
+        at A$75.17, up 6.1%. The ASX 200 fell 0.07% the same day.
+      </p>
+      <p>
+        During the day they were up more than 12%, then gave back about half of that gain by the
+        close.
+      </p>
+
+      <h2>How Xero shares usually react to results</h2>
+      <p>
+        We measured all 17 of Xero’s results from May 2018, after its shares moved to trading
+        only on the ASX, to May 2026, comparing the close on each results day with the close the
+        day before. Xero releases its results before the market opens.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>8.9%</strong>.
+        </li>
+        <li>
+          Twelve of the 17 moved the shares 5% or more, and five 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>13.0%</strong> in May 2021.
+        </li>
+        <li>
+          The largest rise was <strong>10.8%</strong> in May 2019.
+        </li>
+        <li>
+          The shares rose on 8 of the 17 days and fell on 9. The two results before this one
+          both fell by 9.0%.
+        </li>
+      </ul>
+      <p>
+        So a 6.1% rise was a smaller move than usual for Xero: 11 of the 17 earlier results
+        moved the shares more.
+      </p>
+
+      <h2>How far Xero has fallen</h2>
+      <p>
+        Xero’s record close was A$194.21 on 24 June 2025, the last trading day before it
+        announced the Melio deal. From there the shares fell 71.5% to A$55.31 on 1 October 2026,
+        their lowest close since.
+      </p>
+      <p>
+        The fall was not steady. Their worst day this year was 4 February, when they fell 15.9%,
+        after US software shares had slid on fears that new AI tools, from companies including
+        Anthropic, could replace software services. On 14 May, the day of Xero’s full-year
+        results, they fell 9.0%.
+      </p>
+      <p>
+        By 12 November they had risen 35.9% from the October low, but they were still 61.3%
+        below the record, and down 34.1% since the start of 2026.
+      </p>
+      <p>
+        Xero’s shares have fallen 20% or more seven times in our price history for its ASX
+        shares, which starts in November 2012. Xero does not pay a dividend, so these are
+        price-only:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Xero has fallen"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'March 2014', c1: 'September 2015', c2: '−71.1%', c3: 'June 2018' } },
+          { cells: { c0: 'August 2018', c1: 'November 2018', c2: '−29.9%', c3: 'April 2019' } },
+          { cells: { c0: 'February 2020', c1: 'March 2020', c2: '−34.0%', c3: 'June 2020' } },
+          { cells: { c0: 'December 2020', c1: 'March 2021', c2: '−29.7%', c3: 'October 2021' } },
+          { cells: { c0: 'November 2021', c1: 'November 2022', c2: '−58.4%', c3: 'November 2024' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−23.7%', c3: 'June 2025' } },
+          { cells: { c0: 'June 2025', c1: 'October 2026', c2: '−71.5%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The six earlier falls all got back to their record, the longest after more than four
+        years. Until February 2018, Xero’s main listing was in New Zealand, so the first fall is
+        measured on its thinner-traded ASX shares. This is a record of what happened, not a
+        guide to what will.
+      </p>
+
+      <h2>What our model makes of Xero</h2>
+      <p>
+        Our model rates Xero <strong>Constructive</strong>, 67 out of 100, using share prices to
+        12 November and the financial data it held before these results. Its Financial Health
+        score is 63.8, its Valuation score 53.1 and its Cycle Payoff score 90.1. This is our
+        model’s rating, not a recommendation.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Melio.</strong> Whether it reaches the break-even Xero expects in the second
+          half of the year to March 2028.
+        </li>
+        <li>
+          <strong>The buy-back.</strong> Xero will tell the ASX each day how many shares it
+          bought the day before.
+        </li>
+        <li>
+          <strong>The full-year results,</strong> due on 20 May 2027, and whether revenue lands
+          within the NZ$3,770 million to NZ$3,830 million Xero now expects.
+        </li>
+        <li>
+          <strong>A new finance chief,</strong> from Xero’s global search.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for six months. Forecasts are Xero’s own, not ours, and Xero’s
+        adjusted and pro-forma figures are its own measures, which it says have not been
+        audited. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**

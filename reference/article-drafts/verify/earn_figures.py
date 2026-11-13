@@ -47,7 +47,7 @@ PARAMS = CycleParams(
     lookback_bars=int(P["lookback_bars"]),
 )
 
-PRE_MARKET = {"LLY", "NAB.AX", "WBC.AX", "NVO"}
+PRE_MARKET = {"LLY", "NAB.AX", "WBC.AX", "NVO", "XRO.AX"}
 
 #: Companies that file no 8-K (ASX-listed): results days from the ASX announcements list, saved in
 #: reference/nab-2026-fy/sources/asx-ann-<year>.html (each Appendix 4D/4E, all lodged ~8am, before the open).
@@ -62,6 +62,12 @@ RELEASES = {
                "2019-11-04", "2020-05-04", "2020-11-02", "2021-05-03", "2021-11-01", "2022-05-09", "2022-11-07",
                "2023-05-08", "2023-11-06", "2024-05-06", "2024-11-04", "2025-05-05", "2025-11-03", "2026-05-05",
                "2026-11-02"],
+    #: Xero: reference/xro-2026-h1/sources/asx-list-<year>.html, each half-year / full-year results release, all
+    #: lodged 7:44-8:45am, before the open. From May 2018: Xero's sole ASX listing began on 5 February 2018
+    #: (sole-asx-listing-2018.pdf); before that its main market was the NZX and the ASX line traded thinly.
+    "XRO.AX": ["2018-05-10", "2018-11-08", "2019-05-16", "2019-11-07", "2020-05-14", "2020-11-12", "2021-05-13",
+               "2021-11-11", "2022-05-12", "2022-11-10", "2023-05-18", "2023-11-09", "2024-05-23", "2024-11-14",
+               "2025-05-15", "2025-11-13", "2026-05-14", "2026-11-12"],
     #: Novo Nordisk (ADR): the date each financial report gives itself (nvo-2026-q3/sources/edgar/, every caq*.htm,
     #: "for the period 1 January ... to <period end> <date>"), equal to its 6-K filing date. Announced in Copenhagen
     #: hours, before the US close; Q3 2026 was on CNBC at 1:40am ET, before the US open.
@@ -76,7 +82,7 @@ PRE_MARKET_DAYS = {"AMD": {"2020-10-27"},
                             "2022-08-08", "2022-11-07", "2023-11-02"}}
 
 #: The benchmark per market (US default).
-INDICES = {"NAB.AX": ["^AXJO"], "WBC.AX": ["^AXJO"]}
+INDICES = {"NAB.AX": ["^AXJO"], "WBC.AX": ["^AXJO"], "XRO.AX": ["^AXJO"]}
 
 #: Item 2.02 filings that are not a quarterly results release.
 DROP = {
@@ -95,7 +101,7 @@ DROP = {
 }
 
 #: The size of fall listed. Owner's rule (23 Oct 2026): the threshold that leaves 5-10 falls.
-FALL_THRESHOLD = {"NVO": -40, "ARM": -20, "ALAB": -20, "PLTR": -20, "WBC.AX": -25, "AAPL": -40, "AMD": -50, "NAB.AX": -30, "MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
+FALL_THRESHOLD = {"XRO.AX": -20, "NVO": -40, "ARM": -20, "ALAB": -20, "PLTR": -20, "WBC.AX": -25, "AAPL": -40, "AMD": -50, "NAB.AX": -30, "MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
 
 
 def load() -> dict[str, Any]:

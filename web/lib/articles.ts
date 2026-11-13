@@ -971,6 +971,38 @@ export const ARTICLES = [
     reviewed: '2026-11-07',
     minutes: 5,
   },
+  {
+    slug: 'xero-h1-fy27-results',
+    title: 'Xero half-year results 2026: revenue up 46%, profit down 86%',
+    question: 'Why did Xero’s profit fall 86% when its revenue rose 46%?',
+    answer:
+      'Xero’s revenue rose 46% to NZ$1.75 billion in the six months to September 2026, but its net profit fell 86% to NZ$18.5 million, mainly because of Melio, the US business it bought. Its shares rose 6.1% on results day, when it also announced a buy-back of up to A$1 billion, and are still 61.3% below their record.',
+    summary:
+      'Xero’s revenue rose 46% and its profit fell 86%. Why both are true, what the A$1 billion buy-back means, and how far the shares have fallen.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 46% and net profit fell 86%. ',
+      { strong: 'Xero also announced a buy-back of up to A$1 billion.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+46%' },
+      ', net profit ',
+      { figure: '−86%' },
+      ', shares ',
+      { figure: '+6.1%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: 'NZ$1.75B', label: 'revenue' },
+      { value: 'NZ$18.5M', label: 'net profit' },
+      { value: 'A$1B', label: 'buy-back, over 12 months' },
+    ],
+    region: 'Australia',
+    published: '2026-11-13',
+    reviewed: '2026-11-13',
+    minutes: 9,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
