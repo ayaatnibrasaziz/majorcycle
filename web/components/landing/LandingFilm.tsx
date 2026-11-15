@@ -43,7 +43,8 @@ import { FILM_LINES } from '@/lib/landingFilm';
  * the voice cannot drift from the picture and loops with it.
  *
  * No "AI voice" label on the button or the film (owner, 15 Nov 2026: "it doesn't look
- * professional").
+ * professional"). The same track carries quiet sound effects under the voice, so this one
+ * button turns both on (docs/design-system.md, the landing film).
  */
 const LAST = FILM_LINES.length - 1;
 
