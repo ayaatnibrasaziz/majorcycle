@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { track } from '@/lib/analytics';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
   PRICE_TABLE,
@@ -90,6 +91,7 @@ export function StartTrialModal({
         setLoading(false);
         return;
       }
+      track('begin_checkout', { plan });
       // Hand off to Stripe's hosted Checkout page.
       window.location.href = data.url;
     } catch {

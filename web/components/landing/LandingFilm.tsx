@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { track } from '@/lib/analytics';
 import { FILM_LINES } from '@/lib/landingFilm';
 
 /**
@@ -177,6 +178,7 @@ export function LandingFilm() {
     if (!v) return;
     if (v.muted) {
       v.muted = false;
+      track('film_sound_on');
       // Asking for the voice is asking to hear the film, so a paused film starts.
       if (v.paused) {
         wantsPlay.current = true;

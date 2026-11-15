@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { preload } from 'react-dom';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { RevealFocus } from '@/components/RevealFocus';
 import { SITE_ORIGIN } from '@/lib/url';
 import './globals.css';
@@ -75,6 +76,9 @@ export default function RootLayout({
           (11u), so the prerendered pages need no change either.
         */}
         <SpeedInsights />
+        {/* Google Analytics: live host only, after load, page addresses stripped of
+            their query strings (lib/analytics.ts). Owner decision 15 Nov 2026, no banner. */}
+        <GoogleAnalytics />
       </body>
     </html>
   );

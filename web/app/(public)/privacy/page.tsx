@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       // switched by a build flag below. 25 September 2026: the cookies-and-storage
       // clause and the complaints paragraph, which apply whatever is switched on —
       // so the date is no longer conditional (it was, while the latest change was).
-      updated="25 September 2026"
+      updated="15 November 2026"
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -59,7 +59,13 @@ export default function PrivacyPage() {
                 </li>
                 <li>
                   standard technical data (such as log and device information) needed
-                  to operate and secure the Service; and
+                  to operate and secure the Service;
+                </li>
+                {/* Added 2026-11-15 with Google Analytics (lib/analytics.ts). */}
+                <li>
+                  how the website is used — which pages are visited, roughly where
+                  visitors come from, and which features are used — measured with
+                  Google Analytics; and
                 </li>
                 {/* Added 2026-08-15 (legal audit, finding 1). Refer-a-Friend takes
                     a third party's email and message, stores both in `referrals`,
@@ -86,6 +92,7 @@ export default function PrivacyPage() {
                 <li>provide the analysis features;</li>
                 <li>take payment and manage your subscription;</li>
                 <li>send you service and transactional emails;</li>
+                <li>understand how the website is used, so we can improve it;</li>
                 <li>prevent abuse; and</li>
                 <li>comply with our legal obligations.</li>
               </ul>
@@ -157,6 +164,20 @@ export default function PrivacyPage() {
                   Google confirms your identity to us and receives the fact that you
                   signed in; we never receive your Google password.
                 </li>
+                {/* Added 2026-11-15. What reaches Google is set in lib/analytics.ts:
+                    page addresses WITHOUT their query strings (campaign tags only), our
+                    own event names, no user id, no email. Google signals and ads
+                    personalisation are off in the property; event data is kept 14
+                    months. If any of that changes, this line changes with it (11c-v). */}
+                <li>
+                  <strong>Google Analytics</strong> — measuring how the website is used.
+                  It receives the pages you visit, the features you use (such as running
+                  a screen or downloading a report), your approximate location, your
+                  device and browser type, and your IP address, which Google uses to
+                  work out the location and does not store. We do not send your name,
+                  your email address or your account details, and we do not use it for
+                  advertising. Google keeps this data for 14 months.
+                </li>
                 {/* Added with Layer H2, 2026-09-16 — error monitoring.
                     ⚠️ **CONDITIONAL ON THE DSN, AND THAT IS THE POINT.** Sentry is a
                     RECIPIENT of personal information the moment it is switched on, so
@@ -227,8 +248,11 @@ export default function PrivacyPage() {
               its sign-in prompt. The app keeps a few settings in your browser&rsquo;s
               own storage — such as your chosen time horizon and your latest screen
               results — so it remembers them between pages and visits; these stay on
-              your device. We do not use cookies or storage for advertising or to
-              track you across other websites.
+              your device. Google Analytics sets its own cookies on our website (named
+              _ga) so it can tell a returning visitor from a new one; you can block them
+              in your browser settings, or with Google&rsquo;s opt-out add-on, without
+              affecting how the Service works. We do not use cookies or storage for
+              advertising or to track you across other websites.
             </p>
           ),
         },
