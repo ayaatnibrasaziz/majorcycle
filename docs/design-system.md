@@ -2751,6 +2751,21 @@ The earlier generated Learn images are still in `web/public/learn/` and unused.
   speech, and `mc-video-tools/landing-film/kokoro_place.py` checks every ending is silent.
   It is off until the reader presses the sound button. No "AI voice" label on the film
   (owner: it does not look professional).
+- **Sound effects** (owner-approved, 15 Nov 2026) sit under the voice on the same track, so the
+  one sound button turns both on: a night-room bed (room tone, crickets, a clock) that opens
+  and closes the film, a swoosh into the navy card, typing, the machine's hum, stamps, beeps,
+  boings and a sparkle, each placed on the frame of its action in `film.js`. Mostly Pixabay
+  (Content License: free, no attribution, none flagged for YouTube Content ID), plus one ding and
+  one beep built in code; the list is `mc-video-tools/landing-film/sfx/CREDITS.txt`. Every pick
+  was checked by two open listening models (AST, CLAP) because a wrong sound looks right in
+  every number: the first picks included a whoosh the models heard as an owl and a swell they
+  heard as an explosion. `sfx/verify.py` gates the finished mix: every voice line transcribed
+  word for word FROM THE MIX (the busy last scene once masked "Your shortlist, in minutes."),
+  effects at least 12 dB under the voice while it speaks, no sudden cut-offs. The effects breathe
+  out over the last 0.3 s and back in over the first 0.25 s, so a browser that stalls on the loop
+  restart stalls in silence instead of clicking. To change one, edit `sfx/mix.py`, run it and
+  `verify.py`, then swap the track into the four files with the video stream COPIED (never
+  re-encoded) and check the picture's md5 is unchanged.
 - `proxy.ts` excludes `mp4|webm` from the session matcher, or a signed-out visitor's
   video request is bounced to `/login`.
 
