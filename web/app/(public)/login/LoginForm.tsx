@@ -11,6 +11,7 @@ import { AgreeToTerms } from '@/components/AgreeToTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { track } from '@/lib/analytics';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { safeNextPath } from '@/lib/url';
@@ -118,6 +119,7 @@ export function LoginForm() {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
+      track('login', { method: 'email' });
       // Clear any lingering recovery-confinement marker (httpOnly → server-side)
       // so a stale marker can't trap this fresh login on the password-set page.
       await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});

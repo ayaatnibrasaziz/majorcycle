@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, Search, Plus, Check, Clock, Loader2, X } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import { adoptEarlyInput } from '@/lib/useHydrated';
 import type { ListingHit, RequestStatus, TickerRequest } from '@/lib/types';
@@ -100,6 +101,7 @@ export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[
         body: JSON.stringify({ symbol }),
       });
       if (res.ok) {
+        track('request_ticker');
         // Optimistically flip the hit to "Requested" and refresh the recent list.
         setHits((hs) =>
           hs.map((h) => (h.symbol === symbol ? { ...h, requestStatus: 'queued' } : h)),

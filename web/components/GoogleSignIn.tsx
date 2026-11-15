@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { Loader2 } from 'lucide-react';
 import { GoogleButton } from '@/components/GoogleButton';
+import { track } from '@/lib/analytics';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL, safeNextPath } from '@/lib/url';
@@ -127,6 +128,9 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         onError(friendlyAuthError(error.message));
         return;
       }
+      // Google cannot tell us whether this was a first sign-in or a return, so both
+      // are `login`; an email sign-up is `sign_up` (SignupForm).
+      track('login', { method: 'google' });
       // A fresh interactive login is never a confined recovery session — clear any
       // lingering marker (httpOnly, so it must be cleared server-side) before we
       // navigate, otherwise a stale marker would trap this login on the

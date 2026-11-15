@@ -6,6 +6,7 @@ import { Play } from 'lucide-react';
 
 import { PremiumLockInlineCta } from '@/components/stocks/PremiumLock';
 import { useAnalysis } from '@/lib/analysis';
+import { track } from '@/lib/analytics';
 import { PRESETS } from '@/lib/presets';
 import type { AnalyzeRequest, IndexMembership } from '@/lib/types';
 import type { UniverseStock } from '@/lib/universe.server';
@@ -131,6 +132,7 @@ export function RunAnalysis({
   });
 
   const startRun = (req: AnalyzeRequest) => {
+    track('run_screen', { tickers: req.tickers.length, preset: req.preset });
     setHasRun(true);
     void run(req);
   };

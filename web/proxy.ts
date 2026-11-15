@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
+import { GA_CSP } from '@/lib/analytics';
 import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
 import { PREFERRED_SOURCE, usesPreferredSource } from '@/lib/preferredSource';
 import { turnstileCspOrigin } from '@/lib/turnstile';
@@ -109,6 +110,9 @@ export async function proxy(request: NextRequest) {
     // On EVERY page while the site key is set, because a click on a link keeps
     // the policy of the page the reader started on (lib/turnstile.ts says why).
     turnstileOrigin: turnstileCspOrigin(),
+    // Google Analytics' documented origins, on every page for the same reason.
+    // The tag itself only loads on the live host (lib/analytics.ts).
+    analytics: GA_CSP,
   });
 
   // The nonce reaches the renderer on the REQUEST, not the response: Next parses

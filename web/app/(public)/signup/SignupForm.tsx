@@ -11,6 +11,7 @@ import { AgreeToTerms } from '@/components/AgreeToTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { track } from '@/lib/analytics';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL, safeNextPath } from '@/lib/url';
@@ -85,6 +86,7 @@ export function SignupForm() {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
+      track('sign_up', { method: 'email' });
       setSent(true);
     }
   }

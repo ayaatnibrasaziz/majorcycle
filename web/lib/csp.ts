@@ -220,8 +220,20 @@ export function contentSecurityPolicy({
   preferredSourceOrigin = null,
   turnstileOrigin = null,
   sentryDsn,
+  analytics = null,
 }: {
   nonce: string | null;
+  /**
+   * Google Analytics' documented origins (`GA_CSP` in lib/analytics.ts), or `null`.
+   * Passed in, like every other origin here, because this file has no imports.
+   * Site-wide for the reason `turnstileOrigin` gives: a client-side navigation keeps
+   * the policy of the page the reader started on. `null` adds nothing at all.
+   */
+  analytics?: {
+    readonly script: readonly string[];
+    readonly connect: readonly string[];
+    readonly img: readonly string[];
+  } | null;
   dev: boolean;
   supabaseUrl: string | undefined;
   /**
@@ -281,6 +293,8 @@ export function contentSecurityPolicy({
     ...(turnstileOrigin ? [turnstileOrigin] : []),
   ];
 
+  if (analytics) script.push(...analytics.script);
+
   const base = directives(
     supabaseOriginForCsp(supabaseUrl),
     siteOrigin,
@@ -295,6 +309,12 @@ export function contentSecurityPolicy({
     ...base,
     'script-src': script,
     'frame-src': frames,
+    ...(analytics
+      ? {
+          'connect-src': [...base['connect-src']!, ...analytics.connect],
+          'img-src': [...base['img-src']!, ...analytics.img],
+        }
+      : {}),
   };
 
   // Stable order so a diff of two policies reads as a diff of intent.

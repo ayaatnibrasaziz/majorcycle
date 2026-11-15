@@ -17,6 +17,8 @@
 // before the click — so by the time the user clicks, both are usually already in
 // hand and the save dialog appears almost immediately.
 
+import { track } from '@/lib/analytics';
+
 /** Escape `<` so an embedded JSON/text blob can't break out of its <script>. */
 function escapeForScriptJson(text: string): string {
   return text.replace(/</g, '\\u003c');
@@ -138,4 +140,5 @@ export async function downloadInteractiveReport(args: DownloadReportArgs): Promi
   a.download = `majorcycle_${symbol}_report.html`;
   a.click();
   URL.revokeObjectURL(url);
+  track('download_report', { market: args.market, ticker: args.ticker });
 }
