@@ -113,11 +113,17 @@ test.describe('the Articles section', () => {
     // this compares the computed result on both pages rather than checking that
     // a class name is present — a copied class list would pass that and still
     // drift the moment `globals.css` changed.
-    const read = async (path: string) => {
-      await page.goto(path);
-      await page.waitForSelector('.briefing');
-      return page.evaluate(() => {
-        const el = document.querySelector('.briefing')!;
+    //
+    // ⚠️ November 2026: the landing page's own briefing card went when the landing
+    // was rebuilt around the film, and the other place the product draws one (the
+    // Results screen) is behind a subscription. So the reference is now the shared
+    // `.briefing` rule itself: a bare element wearing only that class, created on
+    // this page, must compute to exactly what the featured card computes to. The
+    // claim is the same one — the card adds nothing of its own to the chrome.
+    await page.goto(ARTICLES_INDEX_PATH);
+    await page.waitForSelector('.briefing.art-brief');
+    const { card, bare } = await page.evaluate(() => {
+      const pick = (el: Element) => {
         const s = getComputedStyle(el);
         return {
           backgroundImage: s.backgroundImage,
@@ -128,11 +134,19 @@ test.describe('the Articles section', () => {
           display: s.display,
           gap: s.gap,
         };
-      });
-    };
-    const landing = await read('/');
-    const articles = await read(ARTICLES_INDEX_PATH);
-    expect(articles).toEqual(landing);
+      };
+      const featured = document.querySelector('.briefing.art-brief')!;
+      const probe = document.createElement('div');
+      probe.className = 'briefing';
+      featured.parentElement!.appendChild(probe);
+      const out = { card: pick(featured), bare: pick(probe) };
+      probe.remove();
+      return out;
+    });
+    expect(card).toEqual(bare);
+    // CONTROL: the shared rule really applied, or two unstyled boxes agree perfectly.
+    expect(bare.display, 'the .briefing rule did not apply at all').toBe('flex');
+    expect(bare.boxShadow).not.toBe('none');
   });
 
   test('the index has no "Coming next" section (owner, 1 Nov 2026)', async ({ page }) => {
@@ -720,6 +734,11 @@ test.describe('the Articles section', () => {
     // long one simply paints over its neighbour — nothing scrolls and nothing clips,
     // which is why the page-scroll guards were green. Measured on the text's own ink
     // against the cell's content box, at a phone and a desktop width.
+    //
+    // The time allowed grows with the number of articles: every one is opened twice,
+    // and at 26 articles the default 60 seconds was passing alone with 8 seconds to
+    // spare and failing whenever the machine was busy.
+    test.setTimeout(60_000 + PATHS.length * 2 * 4_000);
     let measured = 0;
     for (const width of [375, 1280]) {
       await page.setViewportSize({ width, height: 900 });

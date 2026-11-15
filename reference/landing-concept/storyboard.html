@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MajorCycle landing film — storyboard v1</title>
+<style>
+  @font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+  *{box-sizing:border-box}body{margin:0;background:#F0F4F8;color:#0F1923;font-family:'Sora',system-ui,sans-serif}
+  .wrap{width:min(1120px,100% - 40px);margin:0 auto;padding:28px 0 80px}
+  h1{font-size:26px;letter-spacing:-.02em;margin:6px 0 8px}
+  .tag{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#1E5CB3}
+  p.n{margin:0 0 8px;color:#4A5568;font-size:14px;line-height:1.55;max-width:80ch}
+  .sc{margin-top:34px}.sc h2{font-size:16px;margin:0 0 4px}.sc .t{font:500 12px 'JetBrains Mono',monospace;color:#1E5CB3;margin-right:8px}
+  .film{border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,25,35,.14),0 3px 10px rgba(15,25,35,.08);border:1px solid #0F192322;margin-top:10px}
+  .film svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tag">Storyboard · version 1 · 13 Nov 2026</div>
+  <h1>MajorCycle landing film — nine scenes</h1>
+  <p class="n">One still per scene, in order. Each is the middle of its scene. Nothing moves yet. Under each title is what will be moving.</p>
+  <div id="board"></div>
+</div>
+<script src="kit.js"></script>
+<script>
+const W = 1600, H = 900;
+const G = `<defs>
+  <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1A36"/><stop offset="1" stop-color="#152C57"/></linearGradient>
+  <radialGradient id="lamp" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#FFE2A0" stop-opacity=".62"/><stop offset=".55" stop-color="#FFD98A" stop-opacity=".16"/><stop offset="1" stop-color="#FFD98A" stop-opacity="0"/></radialGradient>
+  <radialGradient id="scr" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#8FC2FF" stop-opacity=".6"/><stop offset="1" stop-color="#8FC2FF" stop-opacity="0"/></radialGradient>
+  <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#244B8C"/><stop offset="1" stop-color="#15305E"/></linearGradient>
+  <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBF1D9"/><stop offset="1" stop-color="#EBD9AE"/></linearGradient>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#BFE0FF"/><stop offset="1" stop-color="#EAF5FF"/></linearGradient>
+  <radialGradient id="vigl" cx="50%" cy="46%" r="75%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#3A2A10" stop-opacity=".34"/></radialGradient>
+</defs>`;
+const svg = inner => `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${defs}${G}${inner}</svg>`;
+const vig = `<rect width="${W}" height="${H}" fill="url(#vig)"/>`;
+// the line at the bottom-left; optional numbered chip and a smaller second line
+const line = (t, o = {}) => `${o.n ? `<g transform="translate(88 ${o.sub ? 716 : 770})"><circle cx="34" cy="0" r="34" fill="#2E7DE8" stroke="${O}" stroke-width="7"/><text x="34" y="13" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="36" fill="#fff">${o.n}</text></g>` : ''}
+  <text x="${o.n ? 176 : 88}" y="${o.sub ? 738 : (o.n ? 792 : 826)}" font-family="Sora" font-weight="700" font-size="${o.size || 70}" letter-spacing="-2.4" fill="#fff" stroke="${O}" stroke-width="10" paint-order="stroke" stroke-linejoin="round">${t}</text>
+  ${o.sub ? `<text x="88" y="826" font-family="Sora" font-weight="600" font-size="46" letter-spacing="-1.2" fill="#fff" stroke="${O}" stroke-width="9" paint-order="stroke" stroke-linejoin="round">${o.sub}</text>` : ''}`;
+const T = (x, y, s, o = {}, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})">${tile(o)}</g>`;
+
+/* shared room pieces */
+const clock = (x, y, hAng, mAng, trail) => `<g transform="translate(${x} ${y})"><circle r="76" fill="#F4F8FF" stroke="${O}" stroke-width="8"/><g stroke="${O}" stroke-width="5" stroke-linecap="round"><path d="M0 -62v10M62 0h-10M0 62v-10M-62 0h10"/></g>
+  <path d="M0 0v-38" stroke="${O}" stroke-width="8" stroke-linecap="round" transform="rotate(${hAng})"/><path d="M0 0v-54" stroke="#E0652A" stroke-width="5" stroke-linecap="round" transform="rotate(${mAng})"/><circle r="7" fill="${O}"/>
+  ${trail ? `<path d="M-104 -30a110 110 0 0 1 60 -74" fill="none" stroke="#8FC2FF" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 16" opacity=".8"/>` : ''}</g>`;
+const windowMoon = `<g transform="translate(1180 96)"><rect width="300" height="230" rx="16" fill="#07122A" stroke="${O}" stroke-width="7"/><circle cx="212" cy="74" r="34" fill="#F4EBC8"/><circle cx="226" cy="64" r="30" fill="#07122A"/>
+  <circle cx="60" cy="54" r="3" fill="#fff"/><circle cx="118" cy="120" r="2.5" fill="#fff"/><circle cx="80" cy="170" r="2" fill="#fff"/><circle cx="250" cy="170" r="2.5" fill="#fff"/><path d="M150 0v230M0 115h300" stroke="${O}" stroke-width="7"/></g>`;
+const lampCone = `<path d="M800 0l-420 900h840z" fill="url(#lamp)"/><path d="M800 0v70" stroke="${O}" stroke-width="7"/><path d="M730 124q70 -84 140 0z" fill="#1E5CB3" stroke="${O}" stroke-width="7" stroke-linejoin="round"/><ellipse cx="800" cy="126" rx="42" ry="10" fill="#FFE9B5"/>`;
+const desk = `<rect x="0" y="690" width="1600" height="210" fill="#5B3A22"/><rect x="0" y="672" width="1600" height="40" rx="6" fill="#7A4E2D" stroke="${O}" stroke-width="7"/>`;
+const laptop = `<path d="M636 672l24 -116q4 -16 20 -16h240q16 0 20 16l24 116z" fill="#C9D3E0" stroke="${O}" stroke-width="7" stroke-linejoin="round"/><g transform="translate(800 610)">${mark(64, { glow: .5 })}</g>`;
+const mug = (x, y) => `<g transform="translate(${x} ${y})"><rect x="-34" y="-44" width="68" height="74" rx="12" fill="#F4F8FF" stroke="${O}" stroke-width="6"/><path d="M34 -24q30 4 0 38" fill="none" stroke="${O}" stroke-width="6"/><path d="M-10 -66q-10 -14 2 -26M12 -62q-8 -12 2 -22" fill="none" stroke="#DCE8FB" stroke-width="5" stroke-linecap="round" opacity=".7"/></g>`;
+const tab = (x, y, r, w, col, up) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect width="${w}" height="${w * .66}" rx="12" fill="#F4F8FF" stroke="${O}" stroke-width="5"/><rect width="${w}" height="26" rx="12" fill="#C9D8F2"/><rect y="14" width="${w}" height="12" fill="#C9D8F2"/>
+  <circle cx="16" cy="13" r="4.5" fill="#FF8A7A"/><circle cx="31" cy="13" r="4.5" fill="#FFD98A"/><circle cx="46" cy="13" r="4.5" fill="#7FE3B3"/>
+  <path d="${up ? `M16 ${w * .54}l${w * .2} -${w * .14}l${w * .16} ${w * .08}l${w * .2} -${w * .22}l${w * .22} ${w * .06}` : `M16 ${w * .3}l${w * .2} ${w * .1}l${w * .16} -${w * .05}l${w * .2} ${w * .2}l${w * .22} -${w * .03}`}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 ${w * .6}h${w * .5}" stroke="#B8C6DD" stroke-width="5" stroke-linecap="round"/></g>`;
+const paper = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect width="130" height="20" rx="3" fill="#F7F3E8" stroke="${O}" stroke-width="4"/></g>`;
+const note = (x, y, r, c) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect width="62" height="62" rx="5" fill="${c}" stroke="${O}" stroke-width="4"/><path d="M12 20h38M12 34h30M12 46h20" stroke="${O}" stroke-width="3.5" opacity=".55" stroke-linecap="round"/></g>`;
+// inside one of the machine's windows: a thick navy frame with the number badge
+const frame = n => `<rect x="14" y="14" width="${W - 28}" height="${H - 28}" rx="64" fill="none" stroke="#15305E" stroke-width="56"/><rect x="42" y="42" width="${W - 84}" height="${H - 84}" rx="40" fill="none" stroke="${O}" stroke-width="8"/>
+  <path d="M60 60l190 0l-320 320z" fill="#fff" opacity=".10"/>`;
+
+const S = [];
+/* 1 */ S.push(['0:00–0:04', 'The overwhelmed investor', 'Tabs pop open one by one, papers stack up, the clock hand spins to 1 am, a sweat drop falls.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#wall)"/><path d="M0 250h1600" stroke="#0A1730" stroke-width="5" opacity=".7"/>${windowMoon}${clock(250, 190, 30, 0, true)}${lampCone}
+  ${tab(120, 360, -9, 250, '#B83232', false)}${tab(1210, 392, 8, 250, '#0E8A62', true)}${tab(420, 250, 5, 200, '#D99A1C', true)}${tab(980, 236, -6, 200, '#B83232', false)}
+  <g transform="translate(800 392) scale(1.5)">${person('over', { look: -2 })}</g>${desk}<ellipse cx="800" cy="500" rx="330" ry="210" fill="url(#scr)"/>${laptop}
+  ${[0, 1, 2, 3, 4, 5, 6].map(i => paper(150 + (i % 2) * 8, 652 - i * 19, i % 2 ? -2 : 2)).join('')}${[0, 1, 2, 3, 4].map(i => paper(1270 - (i % 2) * 10, 652 - i * 19, i % 2 ? 3 : -2)).join('')}
+  ${note(330, 590, -8, '#FFE08A')}${note(1150, 600, 9, '#FF9FB0')}${note(410, 616, 6, '#9FE0FF')}${mug(1060, 628)}
+  ${T(530, 640, .8, { face: 'flat' }, -14)}${T(596, 652, .62, { face: 'flat' }, 10)}${T(690, 330, .62, { face: 'flat' }, -18)}${T(928, 318, .7, { face: 'flat' }, 14)}${T(610, 420, .5, { face: 'flat' }, 12)}${T(1010, 440, .52, { face: 'flat' }, -10)}
+  ${vig}${line('So many companies.')}`)]);
+
+/* 2 */ { const ring = []; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283, rx = 560, ry = 250, x = 800 + Math.cos(a) * rx, y = 400 + Math.sin(a) * ry, back = Math.sin(a) < 0; ring.push([back, T(x, y, back ? .55 : .9, { face: 'flat' }, (i * 37) % 40 - 20)]); }
+  S.push(['0:04–0:07', 'Close on the face', 'Eyes dart left and right. The tiles circle the head; the ones behind are smaller.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#wall)"/><ellipse cx="800" cy="760" rx="760" ry="420" fill="url(#scr)"/>
+  <ellipse cx="800" cy="400" rx="560" ry="250" fill="none" stroke="#8FC2FF" stroke-width="5" stroke-dasharray="3 22" opacity=".5"/>
+  ${ring.filter(r => r[0]).map(r => r[1]).join('')}
+  <g transform="translate(800 470) scale(3.7)">${person('over', { look: 4 })}</g>
+  ${ring.filter(r => !r[0]).map(r => r[1]).join('')}
+  ${vig}${line('Which ones are worth your time?', { size: 64 })}`)]); }
+
+/* 3 */ S.push(['0:07–0:09', 'The navy card', 'The line types on letter by letter, with a blinking caret.', svg(`
+  <rect width="${W}" height="${H}" fill="#0B1A36"/><rect width="${W}" height="${H}" fill="url(#vig)" opacity=".7"/>
+  <text x="800" y="472" text-anchor="middle" font-family="Sora" font-weight="700" font-size="78" letter-spacing="-2.6" fill="#fff">Nobody has that many evenings.</text>
+  <rect x="1436" y="408" width="14" height="78" fill="#2E7DE8"/>`)]);
+
+/* 4 */ { const arc = []; for (let i = 0; i < 13; i++) { const t = i / 12, x = 560 + t * 560, y = 560 - Math.sin(t * Math.PI) * 300 + t * -60; arc.push(T(x, y, .5 + (i % 3) * .08, { face: 'flat' }, i * 31 % 50 - 25)); }
+  S.push(['0:09–0:13', 'Into the machine', 'The laptop tips, the tiles pour out in an arc and drop into the funnel. The machine lights up. The investor leans back.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#wall)"/><path d="M0 250h1600" stroke="#0A1730" stroke-width="5" opacity=".7"/>
+  <path d="M360 0l-330 900h660z" fill="url(#lamp)"/><path d="M360 0v70" stroke="${O}" stroke-width="7"/><path d="M290 124q70 -84 140 0z" fill="#1E5CB3" stroke="${O}" stroke-width="7" stroke-linejoin="round"/><ellipse cx="360" cy="126" rx="42" ry="10" fill="#FFE9B5"/>
+  <g transform="translate(300 410) rotate(-9) scale(1.5)">${person('over', { look: 5 })}</g>
+  <rect x="0" y="690" width="1600" height="210" fill="#5B3A22"/><rect x="0" y="672" width="820" height="40" rx="6" fill="#7A4E2D" stroke="${O}" stroke-width="7"/>
+  <g transform="translate(500 640) rotate(24)"><path d="M-150 30l24 -116q4 -16 20 -16h212q16 0 20 16l24 116z" fill="#C9D3E0" stroke="${O}" stroke-width="7" stroke-linejoin="round"/></g>
+  <path d="M560 560q280 -420 560 -100" fill="none" stroke="#8FC2FF" stroke-width="6" stroke-dasharray="4 20" opacity=".5"/>${arc.join('')}
+  <!-- machine, right -->
+  <ellipse cx="1240" cy="470" rx="420" ry="330" fill="#2E7DE8" opacity=".16" filter="url(#soft)"/>
+  <path d="M1010 396h240l-52 96h-136z" fill="#2E7DE8" stroke="${O}" stroke-width="7" stroke-linejoin="round"/><path d="M1038 414h184" stroke="#fff" stroke-width="7" opacity=".35" stroke-linecap="round"/>
+  <rect x="960" y="486" width="760" height="330" rx="48" fill="url(#body)" stroke="${O}" stroke-width="8"/><rect x="980" y="502" width="700" height="22" rx="11" fill="#fff" opacity=".12"/>
+  <g transform="translate(1040 578)">${mark(92, { glow: .55 })}</g>
+  ${[0, 1, 2].map(i => `<g transform="translate(${1210 + i * 190} 660)"><rect x="-78" y="-84" width="156" height="150" rx="24" fill="#0B1A36" stroke="${O}" stroke-width="6"/><rect x="-66" y="-72" width="132" height="126" rx="15" fill="#FFE9B5"/><circle cx="-56" cy="-92" r="22" fill="#2E7DE8" stroke="${O}" stroke-width="5"/><text x="-56" y="-83" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#fff">${i + 1}</text></g>`).join('')}
+  <circle cx="1034" cy="668" r="11" fill="#7FE3B3" stroke="${O}" stroke-width="4"/><circle cx="1034" cy="708" r="11" fill="#FFD98A" stroke="${O}" stroke-width="4"/><circle cx="1034" cy="748" r="11" fill="#FF9A8A" stroke="${O}" stroke-width="4"/>
+  <path d="M1060 816v40" stroke="${O}" stroke-width="20" stroke-linecap="round"/>
+  ${vig}${line('So we check every one.')}`)]); }
+
+/* 5 */ { const monitor = (x, good) => `<g transform="translate(${x} 215)"><rect x="-170" y="-110" width="340" height="220" rx="24" fill="#0B1A36" stroke="${O}" stroke-width="8"/><rect x="-150" y="-90" width="300" height="180" rx="12" fill="#10264D"/>
+    <path d="${good ? 'M-140 10h60l22 -70l34 130l30 -96l20 36h114' : 'M-140 20h80l16 -16l18 22l16 -8h150'}" fill="none" stroke="${good ? '#3BE08F' : '#8FA0B8'}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0 110v50" stroke="${O}" stroke-width="10"/></g>`;
+  const table = x => `<g transform="translate(${x} 540)"><rect x="-150" y="0" width="300" height="34" rx="12" fill="#F4F8FF" stroke="${O}" stroke-width="7"/><path d="M-110 34v62M110 34v62" stroke="${O}" stroke-width="12" stroke-linecap="round"/></g>`;
+  S.push(['0:13–0:17', 'Check 1 · Financial Health', 'Tiles hop on the table one after another. The heartbeat line draws across the monitor. A strong pulse earns a green heart; a weak one sags and gets a grey stamp.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#cream)"/><rect y="640" width="${W}" height="260" fill="#D9C08A"/><path d="M0 640h1600" stroke="${O}" stroke-width="7"/>
+  <g transform="translate(800 150)"><rect x="-46" y="-46" width="92" height="92" rx="18" fill="#fff" stroke="${O}" stroke-width="6"/><path d="M-22 0h44M0 -22v44" stroke="#D5483E" stroke-width="14" stroke-linecap="round"/></g>
+  ${monitor(500, true)}${monitor(1100, false)}${table(500)}${table(1100)}
+  ${T(500, 462, 2.1, { stamp: 'good', glow: 1, fill: '#D6F2E4' })}${T(1100, 468, 2.1, { stamp: 'weak', face: 'sad' })}
+  ${T(200, 596, 1.1, { face: 'flat' })}${T(118, 606, .9, { face: 'flat' })}
+  <rect width="${W}" height="${H}" fill="url(#vigl)"/>${frame(1)}${line('Financial Health', { n: 1, sub: 'Is the business sound?' })}`)]); }
+
+/* 6 */ { const hillY = x => 150 + 380 * (1 / (1 + Math.exp(-(x - 760) / 210)));    // the slope the tiles stand on
+  const on = (x, s, o) => T(x, hillY(x) - 35 * s, s, o);
+  let d = 'M0 150'; for (let x = 0; x <= 1600; x += 40) d += `L${x} ${hillY(x)}`;
+  const sign = (x, y, t, dash) => `<path d="M330 ${y}h1150" stroke="${O}" stroke-width="6" ${dash ? 'stroke-dasharray="16 14"' : ''}/><g transform="translate(${x} ${y})"><rect x="-150" y="-30" width="300" height="52" rx="12" fill="#fff" stroke="${O}" stroke-width="5"/><text y="6" text-anchor="middle" font-family="Sora" font-weight="700" font-size="27" fill="${O}">${t}</text></g>`;
+  const ruler = `<g transform="translate(1500 130)"><rect x="-26" y="0" width="52" height="420" rx="8" fill="#FFD98A" stroke="${O}" stroke-width="6"/>${Array.from({ length: 14 }, (_, i) => `<path d="M-26 ${20 + i * 28}h${i % 4 ? 16 : 28}" stroke="${O}" stroke-width="4"/>`).join('')}</g>`;
+  S.push(['0:17–0:21', 'Check 2 · Valuation', 'Four tiles walk down the hill and stop. The ruler slides down beside each. The deeper a tile stands, the brighter it glows — except the weak one, which glows only dimly.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#sky)"/><circle cx="1280" cy="140" r="56" fill="#FFE9A8"/>
+  <path d="${d}L1600 900L0 900z" fill="#8FC48A" stroke="${O}" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M230 160v-120l100 34l-100 34" fill="#E0652A" stroke="${O}" stroke-width="7" stroke-linejoin="round"/>
+  ${sign(520, 350, 'Usual fall', true)}${sign(520, 490, 'Deepest fall ever', false)}${ruler}
+  ${on(560, 1.15, { stamp: 'good' })}${on(880, 1.15, { stamp: 'good', glow: .5, fill: '#E3F5EA' })}${on(1240, 1.15, { stamp: 'good', glow: 1, fill: '#C9F0DA' })}${on(1060, 1.15, { stamp: 'weak', face: 'sad', glow: .12, glowCol: '#C9D3E0' })}
+  <rect width="${W}" height="${H}" fill="url(#vigl)"/>${frame(2)}${line('Valuation', { n: 2, sub: 'How far has it fallen, against how far it usually falls?' })}`)]); }
+
+/* 7 */ { const counter = (x, y, t, good) => `<g transform="translate(${x} ${y})"><rect x="-74" y="-36" width="148" height="72" rx="18" fill="${good ? '#0E8A62' : '#8C97A8'}" stroke="${O}" stroke-width="6"/><text y="13" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="40" fill="#fff">×${t}</text></g>`;
+  const ghosts = [0, 1, 2, 3].map(i => `<g opacity="${.14 + i * .1}">${T(470 + i * 22, 250 + (i % 2 ? 150 : 40), 1.2, { fill: '#C9F0DA' })}</g>`).join('');
+  S.push(['0:21–0:25', 'Check 3 · Cycle Payoff', 'Both tiles are dropped. The left one bounces back higher every time and its counter races up. The right one splats and barely lifts; its counter stops at 2.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#cream)"/><rect y="640" width="${W}" height="260" fill="#D9C08A"/><path d="M0 640h1600" stroke="${O}" stroke-width="7"/><path d="M800 110v530" stroke="${O}" stroke-width="5" stroke-dasharray="10 16" opacity=".35"/>
+  <path d="M330 600q60 -520 120 0q70 -470 140 -430" fill="none" stroke="#0E8A62" stroke-width="8" stroke-dasharray="6 16" stroke-linecap="round"/>
+  ${ghosts}${T(600, 190, 1.8, { stamp: 'good', glow: 1, fill: '#C9F0DA' })}
+  <path d="M520 150l-26 -26M690 150l26 -26M606 86v-34" stroke="#0E8A62" stroke-width="8" stroke-linecap="round"/>
+  ${counter(250, 170, 20, true)}
+  <path d="M1100 150v330" fill="none" stroke="#8C97A8" stroke-width="8" stroke-dasharray="6 16" stroke-linecap="round"/><path d="M1130 600q30 -70 60 0" fill="none" stroke="#8C97A8" stroke-width="8" stroke-dasharray="6 16" stroke-linecap="round"/>
+  <g transform="translate(1100 598) scale(1.9 1.25)">${tile({ stamp: 'weak', face: 'sad' })}</g>
+  <path d="M960 630l-50 -22M1240 630l50 -22M1000 652l-64 6M1200 652l64 6" stroke="${O}" stroke-width="6" stroke-linecap="round" opacity=".5"/>
+  ${counter(1350, 170, 2, false)}
+  <rect width="${W}" height="${H}" fill="url(#vigl)"/>${frame(3)}${line('Cycle Payoff', { n: 3, sub: 'When it falls, how well does it bounce back?' })}`)]); }
+
+/* 8 */ { const ranked = [[0, 84], [0, 81], [1, 74], [1, 69], [2, 63], [2, 58], [2, 52], [3, 44], [3, 38], [4, 29]];
+  S.push(['0:25–0:28', 'Scored and ranked', 'Tiles roll out of the chute one at a time and slide along the shelf into order. The rank numbers tick up under them.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#wall)"/><path d="M0 250h1600" stroke="#0A1730" stroke-width="5" opacity=".7"/>
+  <ellipse cx="900" cy="380" rx="820" ry="330" fill="#2E7DE8" opacity=".14" filter="url(#soft)"/>
+  <rect x="-140" y="120" width="330" height="420" rx="48" fill="url(#body)" stroke="${O}" stroke-width="8"/>
+  <path d="M186 300h90l150 110v36h-240z" fill="#2E7DE8" stroke="${O}" stroke-width="7" stroke-linejoin="round"/>
+  ${T(300, 290, 1.1, { fill: TIER[2], face: 'flat' }, 16)}${T(110, 220, 1.2, { fill: TIER[3], face: 'flat' }, -8)}
+  <rect x="330" y="520" width="1230" height="30" rx="10" fill="#7A4E2D" stroke="${O}" stroke-width="7"/><path d="M400 550v70M1500 550v70" stroke="${O}" stroke-width="14" stroke-linecap="round"/>
+  ${ranked.map((r, i) => `${T(420 + i * 118, 458, 1.35, { fill: TIER[r[0]], score: r[1], face: r[0] > 3 ? 'sad' : r[0] > 1 ? 'flat' : undefined })}<text x="${420 + i * 118}" y="612" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="30" fill="#DCE8FB">${i + 1}</text>`).join('')}
+  ${vig}${line('Scored. Ranked.')}`)]); }
+
+/* 9 */ { const rows = [['GOOGL', 81, 0, 'High Conviction'], ['NVDA', 66, 1, 'Constructive'], ['META', 63, 2, 'Neutral'], ['AMZN', 62, 2, 'Neutral'], ['MSFT', 59, 2, 'Neutral'], ['AAPL', 57, 2, 'Neutral'], ['TSLA', 57, 2, 'Neutral']];
+  S.push(['0:28–0:32', 'The shortlist', 'Same desk as scene 1, tidy. The clock reads 7:05 pm. The results panel rises from the laptop. The investor sips and the top rows get circled.', svg(`
+  <rect width="${W}" height="${H}" fill="url(#wall)"/><path d="M0 250h1600" stroke="#0A1730" stroke-width="5" opacity=".7"/>${windowMoon}${clock(250, 190, 212, 30, false)}${lampCone}
+  <g transform="translate(520 400) scale(1.5)">${person('relieved')}</g>${desk}
+  <g transform="translate(-280 0)">${laptop}</g>${mug(300, 628)}
+  <ellipse cx="1050" cy="430" rx="420" ry="330" fill="url(#scr)"/>
+  <g transform="translate(760 170)"><rect width="600" height="476" rx="22" fill="#F4F8FF" stroke="${O}" stroke-width="7"/><rect width="600" height="56" rx="22" fill="#1A3A6E"/><rect y="30" width="600" height="26" fill="#1A3A6E"/>
+    <text x="24" y="37" font-family="Sora" font-weight="700" font-size="22" fill="#fff">Results</text><text x="576" y="36" text-anchor="end" font-family="JetBrains Mono" font-size="15" fill="#C9D8F2">Real run · 9 Oct 2026</text>
+    ${rows.map((r, i) => `<g transform="translate(0 ${70 + i * 57})">${i ? `<path d="M20 0h560" stroke="#D5DEEA" stroke-width="2"/>` : ''}<text x="28" y="38" font-family="JetBrains Mono" font-size="20" fill="#626B77">${i + 1}</text><text x="70" y="38" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="${O}">${r[0]}</text>
+      <text x="190" y="38" font-family="Sora" font-weight="600" font-size="19" fill="#4A5568">${r[3]}</text><rect x="500" y="10" width="72" height="38" rx="10" fill="${TIER[r[2]]}"/><text x="536" y="37" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#fff">${r[1]}</text></g>`).join('')}
+    <ellipse cx="300" cy="128" rx="322" ry="76" fill="none" stroke="#2E7DE8" stroke-width="7" stroke-dasharray="1400" transform="rotate(-1.5 300 126)"/></g>
+  ${vig}${line('Your shortlist. In minutes.')}`)]); }
+
+const only = new URLSearchParams(location.search).get('only'); const keep = only ? only.split(',').map(Number) : null;
+if (keep) document.querySelectorAll('.tag, h1, .wrap > p.n').forEach(e => e.remove());
+document.getElementById('board').innerHTML = S.map((s, i) => keep && !keep.includes(i + 1) ? '' : `<div class="sc"><h2><span class="t">${i + 1} · ${s[0]}</span>${s[1]}</h2><p class="n">Moving: ${s[2]}</p><div class="film">${s[3]}</div></div>`).join('');
+</script>
+</body>
+</html>

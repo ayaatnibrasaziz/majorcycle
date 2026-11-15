@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MajorCycle — landing concept "The Sort" (prototype)</title>
+<style>
+  /* PROTOTYPE ONLY. Not production code. Fonts fall back to system faces here;
+     the real page uses the site's own Sora + JetBrains Mono. */
+  :root{
+    --deep:#1A3A6E; --mid:#1E5CB3; --bright:#2E7DE8; --ink:#0F1923; --muted:#4A5568;
+    --night:#071226; --night2:#0C1D3D; --line:rgba(140,175,235,.14);
+    --t1:#34D399; --t2:#8BD46A; --t3:#F2B632; --t4:#F5853B; --t5:#EF5B5B;
+    --sans:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:auto} body{margin:0;font-family:var(--sans);color:var(--ink);background:#F3F6FB}
+  a{color:inherit}
+  .nav{position:fixed;inset:0 0 auto 0;z-index:20;display:flex;align-items:center;gap:22px;padding:14px clamp(16px,4vw,48px);color:#fff;
+       background:linear-gradient(#071226cc,#07122600);font-size:14px}
+  .nav b{font-size:16px;letter-spacing:-.01em}.nav span{opacity:.72}.nav .sp{flex:1}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:12px 18px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid transparent}
+  .btn.p{background-color:#2E7DE8;background-image:linear-gradient(135deg,#2E7DE8,#1E5CB3);color:#fff;box-shadow:0 8px 28px -8px #2E7DE8aa}
+  .btn.g{border-color:rgba(255,255,255,.28);color:#fff}
+  .btn.sm{padding:8px 13px;font-size:13px}
+
+  /* ── Hero: the 9-second silent trailer ───────────────────────────────── */
+  .hero{position:relative;min-height:100svh;color:#fff;overflow:hidden;
+        background:radial-gradient(1200px 700px at 72% 45%,#12305f 0%,var(--night2) 45%,var(--night) 100%)}
+  .hero canvas,.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(90deg,var(--night) 0%,#071226e6 26%,#07122600 58%)}
+  .hero-copy{position:relative;z-index:2;max-width:560px;padding:clamp(110px,20vh,190px) clamp(16px,4vw,48px) 60px}
+  .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#9CC2FF}
+  h1{font-size:clamp(38px,5.4vw,68px);line-height:1.02;letter-spacing:-.035em;margin:18px 0 0;font-weight:700}
+  h1 em{font-style:normal;color:#7FB2FF}
+  .sub{margin:20px 0 0;font-size:clamp(16px,1.5vw,19px);line-height:1.5;color:#C9D8F2;max-width:30ch}
+  .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+  .disc{margin-top:22px;font-size:12.5px;color:#A9BBD9;display:flex;gap:10px;align-items:baseline;max-width:46ch}
+  .disc i{font:600 10.5px/1 var(--mono);font-style:normal;letter-spacing:.1em;text-transform:uppercase;border:1px solid #5d79a8;border-radius:5px;padding:4px 6px;color:#CFE0FF;white-space:nowrap}
+  .trailer-cap{position:absolute;z-index:2;right:clamp(16px,4vw,48px);bottom:clamp(20px,6vh,56px);text-align:right}
+  .trailer-cap .k{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#9CC2FF;min-height:12px}
+  .trailer-cap .t{font-size:clamp(20px,2.4vw,30px);font-weight:600;letter-spacing:-.02em;margin-top:8px;min-height:1.2em}
+  .scrollcue{position:absolute;z-index:2;left:50%;bottom:18px;transform:translateX(-50%);font:500 11px/1 var(--mono);letter-spacing:.16em;color:#8fa9d6;text-transform:uppercase}
+
+  /* ── The story: pinned, scroll-scrubbed ──────────────────────────────── */
+  .story{position:relative;height:520vh;background:var(--night)}
+  .stage{position:sticky;top:0;height:100svh;overflow:hidden;color:#fff;
+         background:radial-gradient(1100px 760px at 50% 48%,#102a55 0%,var(--night2) 50%,var(--night) 100%)}
+  .cap{position:absolute;z-index:3;left:clamp(16px,4vw,48px);top:clamp(84px,14vh,130px);max-width:min(84vw,max(290px,25vw))}
+  .cap .k{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#9CC2FF}
+  .cap .t{font-size:clamp(26px,3.4vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.06;margin-top:12px;min-height:1.1em}
+  .cap .d{font-size:clamp(15px,1.4vw,18px);line-height:1.5;color:#C9D8F2;margin-top:12px;min-height:3em}
+  .caret::after{content:"";display:inline-block;width:.5ch;height:1em;background:#7FB2FF;margin-left:2px;vertical-align:-.12em;animation:bl 1s steps(2) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .pips{position:absolute;z-index:3;left:clamp(16px,4vw,48px);bottom:28px;display:flex;gap:8px}
+  .pips i{width:34px;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden;position:relative}
+  .pips i b{position:absolute;inset:0;background:#7FB2FF;transform-origin:left;transform:scaleX(0)}
+  .note{position:absolute;z-index:3;right:clamp(16px,4vw,48px);bottom:24px;font-size:11.5px;color:#8fa9d6;max-width:44ch;text-align:right}
+  .axis{position:absolute;z-index:2;font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#9CC2FF;opacity:0;transition:opacity .35s}
+  /* the real run — an HTML table the seven named dots fly into */
+  .run{position:absolute;z-index:3;right:clamp(16px,4vw,48px);top:50%;transform:translateY(-46%);width:min(480px,40vw);
+       background:rgba(9,22,46,.86);border:1px solid var(--line);border-radius:16px;padding:14px 16px 12px;backdrop-filter:blur(6px);opacity:0;pointer-events:none}
+  .run h3{margin:0 0 2px;font-size:14px;font-weight:600}.run p{margin:0 0 10px;font-size:11.5px;color:#8fa9d6}
+  .row{display:grid;grid-template-columns:22px 26px 62px 1fr 46px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+  .row .n{font:500 12px var(--mono);color:#8fa9d6}.row .tk{font:600 13px var(--mono)}
+  .row .slot{width:14px;height:14px;border-radius:50%;opacity:0;transform:scale(.3)}
+  .row .lab{font-size:12px;color:#C9D8F2;display:flex;flex-direction:column;gap:5px}
+  .bars{display:flex;gap:3px;height:4px}.bars b{display:block;height:100%;border-radius:2px;background:#fff}
+  .chip{font:700 13px var(--mono);border-radius:7px;padding:5px 0;text-align:center;color:#06122a}
+
+  /* ── Light sections after the story (kept deliberately short) ────────── */
+  .after{max-width:1080px;margin:0 auto;padding:clamp(56px,9vh,96px) clamp(16px,4vw,48px)}
+  .after h2{font-size:clamp(26px,3vw,38px);letter-spacing:-.03em;margin:0 0 8px}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+  .card{background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:20px}
+  .card h4{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
+  .w{font:600 11px var(--mono);letter-spacing:.12em;color:var(--mid)}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+  .end{background:var(--night);color:#fff;text-align:center;padding:72px 16px}
+  .end p{color:#A9BBD9;max-width:60ch;margin:14px auto 0;font-size:14px;line-height:1.55}
+  @media (max-width:820px){
+    .hero::after{background:linear-gradient(180deg,#071226f2 0%,#071226d9 46%,#07122600 78%)}
+    .hero-copy{padding-top:96px}.trailer-cap{left:16px;right:16px;text-align:left}
+    .run{left:16px;right:16px;width:auto;top:auto;bottom:64px;transform:none}
+    .cap{top:76px}.note{display:none}.three,.plans{grid-template-columns:1fr}
+    .story{height:460vh}
+  }
+  @media (prefers-reduced-motion:reduce){.story{height:auto}.stage{position:relative}.caret::after{display:none}}
+</style>
+</head>
+<body>
+
+<div class="nav"><b>MajorCycle</b><span>How it works</span><span>Articles</span><span>Learn</span><span>Pricing</span><div class="sp"></div>
+  <a class="btn g sm" href="#">Sign in</a><a class="btn p sm" href="#">Create free account</a></div>
+
+<section class="hero" id="hero">
+  <canvas id="c1" aria-hidden="true"></canvas>
+  <div class="hero-copy">
+    <div class="eyebrow">US · Australia · Canada</div>
+    <h1><span id="count">868</span> companies.<br><em>Ranked in minutes.</em></h1>
+    <p class="sub">Every company checked three ways, scored, and put in order — so you know where to start your research.</p>
+    <div class="cta"><a class="btn p" href="#">Create a free account →</a><a class="btn g" href="#story">See how it works</a></div>
+    <p class="disc"><i>Information only</i><span>Educational analysis, not financial advice.</span></p>
+  </div>
+  <div class="trailer-cap"><div class="k" id="tk"></div><div class="t" id="tt"></div></div>
+  <div class="scrollcue">Scroll ↓</div>
+</section>
+
+<section class="story" id="story">
+  <div class="stage">
+    <canvas id="c2" aria-hidden="true"></canvas>
+    <div class="axis" id="axx" >Expensive ←  valuation  → Attractive</div>
+    <div class="axis" id="axy" >Early ←  in its usual cycle  → Deep</div>
+    <div class="cap"><div class="k" id="sk"></div><div class="t" id="st"></div><div class="d" id="sd"></div></div>
+    <div class="run" id="run">
+      <h3>A real run · the Magnificent Seven</h3><p>Medium horizon · 9 Oct 2026 · bars: Health / Valuation / Cycle</p>
+      <div id="rows"></div>
+    </div>
+    <div class="pips" id="pips"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+    <div class="note">Illustration: each dot stands for one company. The seven named companies are a real run, dated above.</div>
+  </div>
+</section>
+
+<section class="after">
+  <div class="w">THE THREE CHECKS</div>
+  <h2>One score, built from three questions.</h2>
+  <div class="three">
+    <div class="card"><div class="w">40%</div><h4>Financial Health</h4><p>Is the business sound — profits, cash, debt?</p></div>
+    <div class="card"><div class="w">35%</div><h4>Valuation</h4><p>Is the price reasonable for what you get?</p></div>
+    <div class="card"><div class="w">25%</div><h4>Cycle Payoff</h4><p>How far has it fallen, against how far it usually falls?</p></div>
+  </div>
+  <div class="plans">
+    <div class="card"><h4>Free account · no card</h4><p>Browse every company, price charts with cycle bands, fundamentals.</p></div>
+    <div class="card"><h4>Subscription · 7-day trial</h4><p>The ratings, the verdicts, and the screener that ranks a whole index in one run.</p></div>
+  </div>
+</section>
+<section class="end">
+  <h2 style="margin:0;font-size:clamp(26px,3vw,38px);letter-spacing:-.03em">Start with the shortlist.</h2>
+  <div class="cta" style="justify-content:center"><a class="btn p" href="#">Create a free account →</a></div>
+  <p>These are algorithmic summaries of public data. A ranking is where research starts, not where it ends. Information only — not financial advice.</p>
+</section>
+
+<script>
+(() => {
+  const N = 868, REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The real, frozen seven-company run already published on the landing page (9 Oct 2026).
+  const REAL = [
+    ['GOOGL',81,'High Conviction',89.9,56.0,99.9], ['NVDA',66,'Constructive',91.4,11.7,100],
+    ['META',63,'Neutral',79.6,19.6,95.8], ['AMZN',62,'Neutral',76.2,18.9,100],
+    ['MSFT',59,'Neutral',83.2,4.1,97.5], ['AAPL',57,'Neutral',82.5,4.1,90.9], ['TSLA',57,'Neutral',49.8,33.4,100]];
+  const TIER = [[52,211,153],[139,212,106],[242,182,50],[245,133,59],[239,91,91]];
+  const tierOf = s => s >= 80 ? 0 : s >= 65 ? 1 : s >= 50 ? 2 : s >= 35 ? 3 : 4;
+  // Deterministic pseudo-random so the picture is identical on every load.
+  let seed = 20261113; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const dots = [];
+  for (let i = 0; i < N; i++) {
+    const real = REAL[i];
+    const h = real ? real[3] / 100 : Math.min(1, Math.max(0, .58 + (rnd() + rnd() + rnd() - 1.5) * .42));
+    const v = real ? real[4] / 100 : Math.min(1, Math.max(0, .40 + (rnd() + rnd() + rnd() - 1.5) * .46));
+    const c = real ? real[5] / 100 : Math.pow(rnd(), .55);
+    const score = real ? real[1] : Math.round(100 * (.40 * h + .35 * v + .25 * c));
+    dots.push({ h, v, c, score, real, rx: rnd(), ry: rnd(), ph: rnd() * 6.28, sp: .4 + rnd() * .8, dl: rnd() });
+  }
+  const order = dots.map((d, i) => i).sort((a, b) => dots[b].score - dots[a].score);
+  order.forEach((i, r) => dots[i].rank = r);
+  const lerp = (a, b, t) => a + (b - a) * t, clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  function Stage(canvas, opt) {
+    const ctx = canvas.getContext('2d'); let W = 0, H = 0, dpr = 1, plot, wall, slots = null, p = 0, visible = true;
+    function size() {
+      dpr = Math.min(2, devicePixelRatio || 1); W = canvas.clientWidth; H = canvas.clientHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      const narrow = W < 820, L = opt.hero ? (narrow ? .06 : .44) : (narrow ? .08 : .30), T = narrow ? (opt.hero ? .52 : .34) : .17;
+      plot = { x: W * L, y: H * T, w: W * (1 - L - (narrow ? .08 : .07)), h: H * (narrow ? (opt.hero ? .34 : .40) : .64) };
+      const cols = opt.hero && !narrow ? 44 : 31, rows = Math.ceil(N / cols);
+      const ww = opt.hero ? plot.w : (narrow ? plot.w : plot.w * .42);
+      const t = Math.min(ww / cols, plot.h / rows);
+      wall = { cols, t, x: opt.hero ? plot.x + (plot.w - cols * t) / 2 : (narrow ? plot.x : plot.x + 10), y: plot.y + (plot.h - rows * t) / 2 + (narrow && !opt.hero ? -40 : 0) };
+    }
+    // What a dot looks like at the END of act k.
+    function at(d, k) {
+      const sx = plot.x + d.rx * plot.w, sy = plot.y + d.ry * plot.h;
+      const hb = [lerp(64, 126, d.h), lerp(88, 196, d.h), lerp(140, 255, d.h)];
+      if (k === 0) return [sx, sy, 2.1, 120, 150, 205, .5];
+      if (k === 1) return [sx, sy, 1 + d.h * d.h * 4.2, hb[0], hb[1], hb[2], .22 + .78 * d.h];
+      if (k === 2) return [plot.x + d.v * plot.w, sy, 1 + d.h * d.h * 4.2, hb[0], hb[1], hb[2], .22 + .78 * d.h];
+      const T = TIER[tierOf(d.score)];
+      if (k === 3) return [plot.x + d.v * plot.w, plot.y + (1 - d.c) * plot.h, 1 + d.h * d.h * 4.2, T[0], T[1], T[2], .3 + .7 * d.h];
+      // k === 4: the ranked wall — rank 1 top-left, reading order.
+      let x = wall.x + (d.rank % wall.cols + .5) * wall.t, y = wall.y + (Math.floor(d.rank / wall.cols) + .5) * wall.t, r = wall.t * .36;
+      let al = .95; if (d.real && slots) { const s = slots[REAL.indexOf(d.real)]; if (s) { x = s[0]; y = s[1]; r = 6; al = 0; } }
+      return [x, y, r, T[0], T[1], T[2], al];
+    }
+    function draw(now) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      const a = Math.min(3, Math.floor(p)), f = clamp(p - a), tsec = now / 1000;
+      // faint terminal grid
+      ctx.strokeStyle = 'rgba(140,175,235,.055)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = plot.x; x <= plot.x + plot.w + 1; x += plot.w / 8) { ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); }
+      for (let y = plot.y; y <= plot.y + plot.h + 1; y += plot.h / 5) { ctx.moveTo(plot.x, y); ctx.lineTo(plot.x + plot.w, y); }
+      ctx.stroke();
+      // the sweep: one pass of light per check (acts 0→1, 1→2, 2→3)
+      const sweeping = a < 3 && f > 0.02 && f < .98, sw = clamp(f / .72);
+      const calm = clamp(p / 1.2);                       // drift fades as order arrives
+      for (const d of dots) {
+        const A = at(d, a), B = at(d, a + 1);
+        const delay = a === 0 ? d.rx * .62 : a === 2 ? (1 - d.c) * .55 : a === 3 ? clamp(d.rank / N) * .5 : d.dl * .5;
+        const t = ease(clamp((f - delay) / (1 - .62)));
+        const wob = (1 - calm * .88) * (opt.hero ? 7 : 9);
+        const x = lerp(A[0], B[0], t) + Math.sin(tsec * d.sp + d.ph) * wob * (a === 3 ? 1 - t : 1);
+        const y = lerp(A[1], B[1], t) + Math.cos(tsec * d.sp * .8 + d.ph) * wob * (a === 3 ? 1 - t : 1);
+        const r = lerp(A[2], B[2], t), al = lerp(A[6], B[6], t);
+        const col = `rgba(${lerp(A[3], B[3], t) | 0},${lerp(A[4], B[4], t) | 0},${lerp(A[5], B[5], t) | 0},${al})`;
+        if (d.real || (r > 3.4 && a >= 1 && a < 3)) { ctx.shadowColor = col; ctx.shadowBlur = d.real ? 14 : 8; } else ctx.shadowBlur = 0;
+        ctx.fillStyle = col; ctx.beginPath();
+        if (a === 3 && t > .6 && !(d.real && slots)) { const s = r * 2 * 1.05; ctx.roundRect(x - s / 2, y - s / 2, s, s, s * .22 * t); } else ctx.arc(x, y, r, 0, 6.2832);
+        ctx.fill();
+        if (d.real && p > .55) {
+          ctx.shadowBlur = 0; ctx.font = `600 ${opt.hero && W < 820 ? 10 : 11}px ui-monospace,Consolas,monospace`;
+          const la = clamp((p - .55) * 3) * (a === 3 && slots ? 1 - t : (a === 3 ? 1 - t : 1));
+          ctx.fillStyle = `rgba(232,241,255,${la})`; ctx.fillText(d.real[0], x + r + 5, y + 4);
+          if (la > .05) { ctx.strokeStyle = `rgba(232,241,255,${la * .9})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, 6.2832); ctx.stroke(); }
+        }
+      }
+      ctx.shadowBlur = 0;
+      if (sweeping) {
+        const vert = a !== 2, pos = vert ? plot.x + sw * plot.w : plot.y + sw * plot.h, fade = Math.sin(clamp(f / .78) * Math.PI);
+        const g = vert ? ctx.createLinearGradient(pos - 90, 0, pos + 4, 0) : ctx.createLinearGradient(0, pos - 90, 0, pos + 4);
+        g.addColorStop(0, 'rgba(90,160,255,0)'); g.addColorStop(.92, `rgba(110,180,255,${.20 * fade})`); g.addColorStop(1, `rgba(190,225,255,${.9 * fade})`);
+        ctx.fillStyle = g; vert ? ctx.fillRect(pos - 90, plot.y - 14, 94, plot.h + 28) : ctx.fillRect(plot.x - 14, pos - 90, plot.w + 28, 94);
+      }
+    }
+    let raf = 0; const loop = now => { if (visible) { opt.tick && opt.tick(now); draw(now); } raf = requestAnimationFrame(loop); };
+    new IntersectionObserver(e => visible = e[0].isIntersecting).observe(canvas);
+    addEventListener('resize', () => { size(); opt.onSize && opt.onSize(); });
+    size();
+    const api = { set: v => p = v, get plot() { return plot; }, setSlots: s => slots = s, start() { REDUCED ? (p = 4, draw(0)) : raf = requestAnimationFrame(loop); }, redraw: () => draw(performance.now()) };
+    return api;
+  }
+
+  // typed captions — the "black card" device, at ~28 characters a second
+  function typer(el) { let cur = null, t0 = 0, shown = -1; return (txt, now) => {
+    if (REDUCED) { if (cur !== txt) { cur = txt; el.textContent = txt; } return; }
+    if (txt !== cur) { cur = txt; t0 = now; shown = -1; }
+    const n = Math.min(txt.length, Math.floor((now - t0) / 30));
+    if (n !== shown) { shown = n; el.textContent = txt.slice(0, n); el.classList.toggle('caret', n < txt.length); } }; }
+
+  const CAPS = [
+    ['', N + ' companies.', 'Three markets. Nobody has the evenings to check them all.'],
+    ['Check 1 of 3', 'Financial Health', 'Is the business sound? Strong companies light up. Weak ones fade.'],
+    ['Check 2 of 3', 'Valuation', 'Is the price reasonable for what you get? Each company takes its place.'],
+    ['Check 3 of 3', 'Cycle Payoff', 'How far has it fallen, against how far it usually falls?'],
+    ['The result', 'Scored. Ranked.', 'A shortlist to research — in minutes, not evenings.']];
+
+  // ── Hero trailer: autoplay loop, ~11 s ───────────────────────────────
+  const tk = typer(document.getElementById('tk')), tt = typer(document.getElementById('tt'));
+  const SEG = [[0, 1.1], [1, 1.9], [2, 1.9], [3, 1.9], [4, 2.1], [4.001, 2.2]];   // [target p, seconds to get there]
+  const TOTAL = SEG.reduce((s, x) => s + x[1], 0);
+  const hero = Stage(document.getElementById('c1'), { hero: true, tick(now) {
+    let t = (now / 1000) % TOTAL, prev = 0, pv = 0;
+    for (const [target, dur] of SEG) { if (t <= dur) { pv = lerp(prev, Math.min(target, 4), t / dur); break; } t -= dur; prev = Math.min(target, 4); }
+    hero.set(pv); const i = pv <= .02 ? 0 : Math.min(4, Math.ceil(pv - .02)); tk(CAPS[i][0] || 'Every company', now); tt(CAPS[i][1], now);
+  } });
+  hero.start();
+
+  // ── Story: scroll-scrubbed. One rect read per frame, no scroll listener ──
+  const story = document.getElementById('story'), run = document.getElementById('run'), rowsEl = document.getElementById('rows');
+  rowsEl.innerHTML = REAL.map((r, i) => { const T = TIER[tierOf(r[1])], c = `rgb(${T})`;
+    return `<div class="row"><span class="n">${i + 1}</span><span class="slot" style="background:${c};box-shadow:0 0 12px ${c}"></span><span class="tk">${r[0]}</span>
+      <span class="lab">${r[2]}<span class="bars"><b style="width:${r[3] * .4}%;background:#6FB0FF"></b><b style="width:${r[4] * .35}%;background:#B9A6FF"></b><b style="width:${r[5] * .25}%;background:#F2B632"></b></span></span>
+      <span class="chip" style="background:${c}">${r[1]}</span></div>`; }).join('');
+  const sk = typer(document.getElementById('sk')), st = typer(document.getElementById('st')), sd = typer(document.getElementById('sd'));
+  const pips = [...document.querySelectorAll('#pips b')], axx = document.getElementById('axx'), axy = document.getElementById('axy');
+  const c2 = document.getElementById('c2');
+  function measureSlots() { const cr = c2.getBoundingClientRect(); return [...rowsEl.querySelectorAll('.slot')].map(s => { const r = s.getBoundingClientRect(); return [r.left - cr.left + r.width / 2, r.top - cr.top + r.height / 2]; }); }
+  const slotEls = [...rowsEl.querySelectorAll('.slot')];
+  function placeAxes() { const pl = st2.plot; axx.style.cssText = `left:${pl.x + pl.w / 2}px;top:${pl.y + pl.h + 16}px;transform:translateX(-50%)`; axy.style.cssText = `left:${pl.x - 22}px;top:${pl.y + pl.h / 2}px;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap`; }
+  const st2 = Stage(c2, { onSize() { st2.setSlots(measureSlots()); placeAxes(); }, tick(now) {
+    const r = story.getBoundingClientRect(), span = r.height - innerHeight, q = clamp(-r.top / span);
+    // each act gets a hold at its end, so a caption can be read before the next pass starts
+    const u = q * 4.6, k = Math.min(4, Math.floor(u / 1.15)), w = u - k * 1.15, pv = k >= 4 ? 4 : k + ease(clamp(w / .85));
+    st2.set(pv);
+    const i = pv <= .02 ? 0 : Math.min(4, Math.ceil(pv - .02)); sk(CAPS[i][0], now); st(CAPS[i][1], now); sd(CAPS[i][2], now);
+    pips.forEach((b, j) => b.style.transform = `scaleX(${clamp(pv - j + 1)})`);
+    axx.style.opacity = pv > 1.3 && pv < 3.3 ? .9 : 0; axy.style.opacity = pv > 2.3 && pv < 3.3 ? .9 : 0;
+    const lit = clamp((pv - 3.72) / .22); slotEls.forEach((e, j) => { const l = clamp(lit * 1.6 - j * .09); e.style.opacity = l; e.style.transform = `scale(${.3 + .7 * l})`; });
+    const o = clamp((pv - 3.25) / .5); run.style.opacity = o; run.style.transform = (innerWidth < 820 ? '' : 'translateY(-46%) ') + `translateX(${(1 - o) * 26}px)`;
+  } });
+  st2.setSlots(measureSlots()); placeAxes(); st2.start();
+  if (REDUCED) { run.style.opacity = 1; sk(CAPS[4][0], 0); st(CAPS[4][1], 0); sd(CAPS[4][2], 0); st2.redraw(); }
+})();
+</script>
+</body>
+</html>

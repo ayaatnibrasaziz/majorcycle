@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><title>frame sheet</title>
+<style>@font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}@font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+body{margin:0;background:#222;font:11px 'JetBrains Mono',monospace;color:#fff}#g{display:grid;gap:3px;padding:3px}.c{position:relative}.c svg{display:block;width:100%;height:auto}.c span{position:absolute;left:3px;top:2px;background:#000a;padding:0 3px}</style></head>
+<body><div id="g"></div><script src="kit.js"></script><script src="film.js"></script><script>
+const Q=new URLSearchParams(location.search),from=+Q.get('from')||0,n=+Q.get('n')||16,cols=+Q.get('cols')||4,fps=+Q.get('fps')||12;
+if(Q.get('text')==='0')HIDE_TEXT=true;
+const g=document.getElementById('g');g.style.gridTemplateColumns=`repeat(${cols},1fr)`;
+let h='';for(let i=0;i<n;i++){const t=from+i/fps;h+=`<div class="c">${filmSVG(t)}<span>${t.toFixed(2)}</span></div>`}g.innerHTML=h;
+</script></body></html>

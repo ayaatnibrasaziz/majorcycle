@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MajorCycle landing film — scene 7 moving test</title>
+<style>
+  @font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+  *{box-sizing:border-box}body{margin:0;background:#F0F4F8;color:#0F1923;font-family:'Sora',system-ui,sans-serif}
+  .wrap{width:min(1120px,100% - 32px);margin:0 auto;padding:22px 0 60px}
+  h1{font-size:22px;letter-spacing:-.02em;margin:0 0 6px}p{color:#4A5568;font-size:14px;line-height:1.55;margin:0 0 14px;max-width:78ch}
+  .film{border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,25,35,.14),0 3px 10px rgba(15,25,35,.08);border:1px solid #0F192322}
+  .film svg{display:block;width:100%;height:auto}
+  .bar{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  button{font:600 14px 'Sora',sans-serif;border-radius:9px;padding:10px 16px;border:1px solid #CBD5E1;background:#fff;color:#1A3A6E;cursor:pointer}
+  button.p{background-color:#1E5CB3;background-image:linear-gradient(135deg,#1E5CB3,#1A3A6E);color:#fff;border-color:transparent}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Scene 7 · Cycle Payoff · moving test</h1>
+  <p>This is the test for people who do not know MajorCycle. Press <b>Hide text</b>, let them watch it loop two or three times, and ask: "What is this showing?"</p>
+  <div class="film" id="film"></div>
+  <div class="bar"><button class="p" id="tx">Hide text</button><button id="rp">Replay from start</button></div>
+</div>
+<script src="kit.js"></script>
+<script>
+const W = 1600, H = 900, FLOOR = 640, TS = 1.8, HALF = 35 * TS;     // tile half-height on screen
+const LX = 520, RX = 1080, TOP = 330;                                // drop height (tile centre)
+const G = `<defs>
+  <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBF1D9"/><stop offset="1" stop-color="#EBD9AE"/></linearGradient>
+  <radialGradient id="vigl" cx="50%" cy="46%" r="75%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#3A2A10" stop-opacity=".34"/></radialGradient></defs>`;
+const CH = { w: 288, h: 300, top: 235, base: 20, D: 90, trend: 130 };   // chart inner box; start level = base + D
+const chart = (id, cx, col) => { const x0 = cx - CH.w / 2, yb = CH.top + CH.h, ys = yb - CH.base - CH.D;
+  return `<g><rect x="${x0 - 16}" y="${CH.top - 20}" width="${CH.w + 32}" height="${CH.h + 40}" rx="18" fill="#FFFDF6" stroke="${O}" stroke-width="6"/>
+  <path d="M${x0} ${CH.top + 75}h${CH.w}M${x0} ${CH.top + 150}h${CH.w}M${x0} ${CH.top + 225}h${CH.w}" stroke="${O}" stroke-width="2" opacity=".1"/>
+  <path d="M${x0} ${ys}h${CH.w}" stroke="${O}" stroke-width="4" stroke-dasharray="6 10" opacity=".35"/>
+  <polyline id="${id}" fill="none" stroke="${col}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle id="${id}d" r="10" fill="${col}" stroke="${O}" stroke-width="5"/></g>`; };
+const counter = (id, x, good) => `<g transform="translate(${x} 150)" id="${id}g"><rect x="-84" y="-40" width="168" height="80" rx="20" fill="${good ? '#0E8A62' : '#8C97A8'}" stroke="${O}" stroke-width="6"/><text id="${id}" y="15" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="44" fill="#fff">×0</text></g>`;
+document.getElementById('film').innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${defs}${G}
+  <rect width="${W}" height="${H}" fill="url(#cream)"/><rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="#D9C08A"/><path d="M0 ${FLOOR}h${W}" stroke="${O}" stroke-width="7"/>
+  <path d="M800 110v530" stroke="${O}" stroke-width="5" stroke-dasharray="10 16" opacity=".3"/>
+  ${chart('chL', 250, '#0E8A62')}${chart('chR', 1350, '#B83232')}
+  <ellipse id="shL" cx="${LX}" cy="${FLOOR + 8}" rx="70" ry="12" fill="${O}" opacity=".18"/><ellipse id="shR" cx="${RX}" cy="${FLOOR + 8}" rx="70" ry="12" fill="${O}" opacity=".18"/>
+  <g id="trail"></g>
+  <g id="L"><g id="Ldim">${tile({ stamp: 'good' })}</g><g id="Lglow">${tile({ stamp: 'good', glow: 1, fill: '#C9F0DA' })}</g></g>
+  <g id="R"><g id="Rok">${tile({ stamp: 'weak', face: 'flat' })}</g><g id="Rsad">${tile({ stamp: 'weak', face: 'sad' })}</g></g>
+  <g id="dust" stroke="${O}" stroke-width="6" stroke-linecap="round" opacity="0"><path d="M${RX - 150} 628l-46 -20M${RX + 150} 628l46 -20M${RX - 120} 652l-60 6M${RX + 120} 652l60 6"/></g>
+  <g id="rays" stroke="#0E8A62" stroke-width="8" stroke-linecap="round" opacity="0"><path d="M-84 -60l-26 -26M84 -60l26 -26M0 -96v-34"/></g>
+  ${counter('cL', 250, true)}${counter('cR', 1350, false)}
+  <rect width="${W}" height="${H}" fill="url(#vigl)"/>
+  <rect x="14" y="14" width="${W - 28}" height="${H - 28}" rx="64" fill="none" stroke="#15305E" stroke-width="56"/><rect x="42" y="42" width="${W - 84}" height="${H - 84}" rx="40" fill="none" stroke="${O}" stroke-width="8"/>
+  <g id="words">
+    <g transform="translate(88 716)"><circle cx="34" cy="0" r="34" fill="#2E7DE8" stroke="${O}" stroke-width="7"/><text x="34" y="13" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="36" fill="#fff">3</text></g>
+    <text x="176" y="738" font-family="Sora" font-weight="700" font-size="70" letter-spacing="-2.4" fill="#fff" stroke="${O}" stroke-width="10" paint-order="stroke" stroke-linejoin="round">Cycle Payoff</text>
+    <text x="88" y="826" font-family="Sora" font-weight="600" font-size="46" letter-spacing="-1.2" fill="#fff" stroke="${O}" stroke-width="9" paint-order="stroke" stroke-linejoin="round">When it falls, how well does it bounce back?</text>
+  </g></svg>`;
+
+const $ = id => document.getElementById(id);
+const REST = FLOOR - HALF;                       // tile centre when sitting on the floor
+const T_HOLD = .35, T_DROP = .45, LAND = T_HOLD + T_DROP;
+// Left: six bounces, each quicker than the last (a fast-forward through its history), each a little higher.
+const DUR = [.62, .54, .46, .4, .34, .3];
+const COUNT = [2, 5, 8, 12, 16, 20];
+const STARTS = []; { let a = LAND; for (const d of DUR) { STARTS.push(a); a += d; } var L_END = a; }
+const RISE = .34, END_HOLD = 1.0, TOTAL = L_END + RISE + END_HOLD;
+const APEX = TOP - 110;                          // every bounce returns ABOVE where it was dropped from
+const place = (el, x, y, sx = 1, sy = 1) => el.setAttribute('transform', `translate(${x} ${y + HALF * (1 - sy)}) scale(${TS * sx} ${TS * sy})`);
+// The tile's height at any moment. The charts are drawn from these same two functions, so chart and tile cannot disagree.
+const lyAt = t => {
+  if (t < T_HOLD) return TOP;
+  if (t < LAND) { const u = (t - T_HOLD) / T_DROP; return TOP + (REST - TOP) * u * u; }
+  if (t < L_END) { const i = STARTS.findIndex((s, k) => t < s + DUR[k]), u = (t - STARTS[i]) / DUR[i]; return REST - (REST - APEX) * (.86 + .14 * Math.min(1, i / 3)) * 4 * u * (1 - u); }
+  const u = Math.min(1, (t - L_END) / RISE); return REST - (REST - APEX) * (1 - (1 - u) * (1 - u));
+};
+const ryAt = t => {
+  if (t < T_HOLD) return TOP;
+  if (t < LAND) { const u = (t - T_HOLD) / T_DROP; return TOP + (REST - TOP) * u * u; }
+  const a = t - LAND;
+  if (a < .16) return REST;
+  if (a < .62) { const u = (a - .16) / .46; return REST - 46 * 4 * u * (1 - u); }
+  if (a < .95) { const u = (a - .62) / .33; return REST - 14 * 4 * u * (1 - u); }
+  return REST;
+};
+const chartY = (y, t, rising) => CH.top + CH.h - CH.base - (REST - y) / (REST - TOP) * CH.D - (rising ? CH.trend * Math.max(0, Math.min(1, (t - LAND) / (L_END + RISE - LAND))) : 0);
+// Pen position across the chart: each bounce gets the same width, so the fast late bounces stay readable.
+const penX = t => t < LAND ? .12 * t / LAND : t < L_END ? (() => { const i = STARTS.findIndex((s, k) => t < s + DUR[k]); return .12 + .7 * (i + (t - STARTS[i]) / DUR[i]) / DUR.length; })() : .82 + .18 * (t - L_END) / (TOTAL - L_END);
+function drawChart(id, cx, fn, t, rising) {
+  const x0 = cx - CH.w / 2, pts = []; let x = x0, y = 0;
+  for (let s = 0; s <= t; s += 1 / 120) { x = x0 + penX(s) * CH.w; y = chartY(fn(s), s, rising); pts.push(x.toFixed(1) + ',' + y.toFixed(1)); }
+  x = x0 + penX(t) * CH.w; y = chartY(fn(t), t, rising); pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  $(id).setAttribute('points', pts.join(' ')); $(id + 'd').setAttribute('cx', x); $(id + 'd').setAttribute('cy', y);
+}
+const FREEZE = new URLSearchParams(location.search).get('t');
+let t0 = performance.now();
+function frame(now) {
+  const t = FREEZE !== null ? +FREEZE : ((now - t0) / 1000) % TOTAL;
+  drawChart('chL', 250, lyAt, t, true); drawChart('chR', 1350, ryAt, t, false);
+  // ── left tile
+  let ly = TOP, sx = 1, sy = 1, n = 0;
+  if (t < T_HOLD) ly = TOP;
+  else if (t < LAND) { const u = (t - T_HOLD) / T_DROP; ly = TOP + (REST - TOP) * u * u; sy = 1 + .12 * u; sx = 1 - .08 * u; }
+  else if (t < L_END) {
+    let i = STARTS.findIndex((s, k) => t < s + DUR[k]); const u = (t - STARTS[i]) / DUR[i]; n = COUNT[i];
+    const h = (REST - APEX) * (.86 + .14 * Math.min(1, i / 3));
+    ly = REST - h * 4 * u * (1 - u);
+    const edge = Math.max(0, 1 - Math.min(u, 1 - u) * 9);          // squash right at the floor
+    sy = 1 - .22 * edge; sx = 1 + .18 * edge;
+  } else { const u = Math.min(1, (t - L_END) / RISE); ly = REST - (REST - APEX) * (1 - (1 - u) * (1 - u)); n = 20; }
+  place($('L'), LX, ly, sx, sy);
+  const glow = Math.min(1, n / 10); $('Lglow').setAttribute('opacity', glow); $('Ldim').setAttribute('opacity', 1 - glow);
+  $('cL').textContent = '×' + n;
+  $('shL').setAttribute('rx', 70 - 34 * Math.min(1, (REST - ly) / 400));
+  const done = t > L_END + RISE * .6; $('rays').setAttribute('opacity', done ? 1 : 0); $('rays').setAttribute('transform', `translate(${LX} ${ly})`);
+  // ── right tile: one weak hop, one weaker, then it stays down
+  let ry = TOP, rsx = 1, rsy = 1, rn = 0;
+  if (t < T_HOLD) ry = TOP;
+  else if (t < LAND) { const u = (t - T_HOLD) / T_DROP; ry = TOP + (REST - TOP) * u * u; rsy = 1 + .12 * u; rsx = 1 - .08 * u; }
+  else {
+    const a = t - LAND; rn = 1;
+    if (a < .16) { const u = a / .16; rsy = 1 - .42 * Math.sin(u * Math.PI / 2); rsx = 1 + .34 * Math.sin(u * Math.PI / 2); ry = REST; }
+    else if (a < .62) { const u = (a - .16) / .46; ry = REST - 46 * 4 * u * (1 - u); rsy = .72 + .2 * Math.sin(u * Math.PI); rsx = 1.2 - .12 * Math.sin(u * Math.PI); }
+    else if (a < .95) { const u = (a - .62) / .33; rn = 2; ry = REST - 14 * 4 * u * (1 - u); rsy = .66; rsx = 1.26; }
+    else { rn = 2; ry = REST; rsy = .62; rsx = 1.3; }
+  }
+  place($('R'), RX, ry, rsx, rsy);
+  const sad = t > LAND + .1; $('Rsad').setAttribute('opacity', sad ? 1 : 0); $('Rok').setAttribute('opacity', sad ? 0 : 1);
+  $('cR').textContent = '×' + rn;
+  const da = t - LAND; $('dust').setAttribute('opacity', da > 0 && da < .5 ? .5 * (1 - da / .5) : (da > .95 && da < 1.3 ? .35 * (1 - (da - .95) / .35) : 0));
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+$('rp').onclick = () => t0 = performance.now();
+$('tx').onclick = e => { const w = $('words'), hide = w.style.display !== 'none'; w.style.display = hide ? 'none' : ''; e.target.textContent = hide ? 'Show text' : 'Hide text'; };
+</script>
+</body>
+</html>

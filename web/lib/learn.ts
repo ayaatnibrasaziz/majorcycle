@@ -108,8 +108,8 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     label: 'Falls and recoveries',
     blurb: 'What a fall actually is, why the same share tends to fall by similar amounts, and what that can and cannot tell you.',
     image: {
-      src: '/learn/falls-and-recoveries.png',
-      alt: 'A share price traced along the top edge of a dark navy landscape, rising and falling three times by clearly different amounts. A small figure stands at the bottom of the deepest fall, looking up the slope ahead, with a misty city skyline behind.',
+      src: '/learn/falls-and-recoveries-film.png',
+      alt: 'A cartoon company walks along a green hillside shaped like a share price. It dips twice to a dashed line marked Usual fall, drops once to a lower line marked Deepest fall, then climbs to a flag on the highest hill, smiling.',
     },
     // Both titles announced here are now written and live above. Kept as a note
     // rather than an empty array: `upcoming: []` and a missing field render
@@ -121,8 +121,8 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     label: 'Judging the business',
     blurb: 'A falling price is not the same as a bargain. What the accounts underneath are being asked, in plain words.',
     image: {
-      src: '/learn/judging-the-business.png',
-      alt: 'Two office towers of the same height under identical falling share prices. One stands square with warmly lit windows and an open doorway; the other leans, cracked from top to bottom, its windows dark and its highest floor sliding away. A small figure stands between them, looking up.',
+      src: '/learn/judging-the-business-film.png',
+      alt: 'Two cartoon companies on examination tables, each beside the same falling price chart. One smiles under a monitor showing a strong heartbeat; the other frowns under a nearly flat line. An investor stands between them.',
     },
     // Announced and now written — see 'is-a-dividend-safe' below.
   },
@@ -131,8 +131,8 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     label: 'Using MajorCycle',
     blurb: 'How to read a rating, what the five tiers mean, and what the tool deliberately does not try to do.',
     image: {
-      src: '/learn/using-majorcycle.png',
-      alt: 'A share price falling through five stepped depth bands to a marker at the bottom of a valley. A small figure stands at the point where the drawn landscape fades away into empty mist, looking out at nothing.',
+      src: '/learn/using-majorcycle-film.png',
+      alt: 'An investor at a desk at night, smiling at a laptop. Beside it five cartoon companies stand on five descending steps, coloured green through gold to red, each wearing its score.',
     },
     // ⚠️ "What the five tiers mean" was announced here and has been FOLDED into
     // "How to read a MajorCycle rating" rather than written separately. Two
