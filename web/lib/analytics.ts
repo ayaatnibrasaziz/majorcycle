@@ -191,10 +191,21 @@ export function track(event: AnalyticsEvent, params: Params = {}): void {
   }
 }
 
-/** Record a page view for the current address (cleaned). */
-export function trackPageView(): void {
+/**
+ * Record a page view for the current address (cleaned).
+ *
+ * ⚠️ WAITS FOR A TITLE. The ticker page streams its `<title>` in after the route has
+ * changed (CLAUDE.md, P7: it sits in the body), so a view sent on the path change
+ * reached Google with a BLANK page name — measured 2026-11-15 on /stocks/us/AAPL,
+ * while every other page's name was right. Up to 3 s, then it goes anyway.
+ */
+export function trackPageView(waited = 0): void {
   const g = gtag();
   if (!g) return;
+  if (!document.title && waited < 3000) {
+    window.setTimeout(() => trackPageView(waited + 100), 100);
+    return;
+  }
   try {
     g('set', {
       page_location: cleanLocation(window.location.href),

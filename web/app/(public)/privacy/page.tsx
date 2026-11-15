@@ -248,8 +248,8 @@ export default function PrivacyPage() {
               its sign-in prompt. The app keeps a few settings in your browser&rsquo;s
               own storage — such as your chosen time horizon and your latest screen
               results — so it remembers them between pages and visits; these stay on
-              your device. Google Analytics sets its own cookies on our website (named
-              _ga) so it can tell a returning visitor from a new one; you can block them
+              your device. Google Analytics sets its own cookies on our website so it can
+              tell a returning visitor from a new one; you can block them
               in your browser settings, or with Google&rsquo;s opt-out add-on, without
               affecting how the Service works. We do not use cookies or storage for
               advertising or to track you across other websites.
