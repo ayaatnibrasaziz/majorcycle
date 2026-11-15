@@ -141,7 +141,7 @@
 }
 .lp .hero-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: clamp(28px, 4vw, 56px);
   align-items: center;
 }
@@ -964,5 +964,348 @@
   }
   .lp[data-motion] .dot {
     transform: translate(-50%, 50%);
+  }
+}
+
+/* ── The film ──────────────────────────────────────────────────────────── */
+/* The hero's right-hand column. The frame is the film's own navy window; the
+   nine lines are real text, laid over the picture on a wide screen and set under
+   it on a narrow one (see components/landing/LandingFilm.tsx for why they are not
+   burnt into the video).
+
+   Sizes inside the overlay are in `cqw`, a share of the film's own width, because
+   the lines were drawn on a 1600-unit picture: 70 units of type is 4.375cqw at any
+   size the film is shown, which is what keeps them in proportion from a tablet to
+   a 4K monitor. */
+.lp .film {
+  position: relative;
+  container-type: inline-size;
+  margin: 0;
+  min-width: 0;
+}
+/* The stage is the film's box as the document sees it: the picture, and over it
+   the lines. Its navy never shows (the picture covers it); it is there so that
+   white lines laid over the film have the film's own ground behind them in the
+   document, which is what a contrast measurement reads. On the film's light scenes
+   it is the dark outline on each letter, not this ground, that keeps a line
+   legible: the same outline the lines were drawn with. */
+.lp .film-stage {
+  position: relative;
+  border-radius: 14px;
+  background-color: var(--brand-deep);
+}
+.lp .film-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background-color: var(--brand-deep);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+.lp .film-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lp .film-still {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: url('/film/still.webp') center / cover no-repeat;
+}
+.lp .film-toggle {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background-color: rgba(11, 26, 54, 0.78);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.lp .film-toggle:hover,
+.lp .film-toggle:focus-visible {
+  opacity: 1;
+}
+/* Two rings, light then dark, because the button sits on a moving picture and a
+   single colour would vanish against some scene. */
+.lp .film-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 5px var(--brand-deep);
+}
+/* The sound button sits beside play/pause. */
+.lp .film-sound {
+  right: 54px;
+}
+
+.lp .film-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  left: 5.5cqw;
+  right: 12cqw;
+  bottom: 5.6cqw;
+  pointer-events: none;
+}
+/* Leaving is instant and arriving is eased: the film cuts hard between scenes, so
+   a line that faded OUT would linger over the next scene's picture. */
+.lp .film-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5cqw;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(1.6cqw);
+}
+.lp .film-line[data-on] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.22s linear 0.05s,
+    transform 0.26s var(--lp-ease) 0.05s;
+}
+/* Scene 3's words are drawn in the picture; its text entry is for readers who
+   cannot see the picture, never for the overlay. */
+.lp .film-line[data-in-picture] {
+  opacity: 0;
+}
+.lp .film-line-title,
+.lp .film-line-sub {
+  color: #fff;
+  /* The drawn lines had a dark outline. Sixteen shadows on a circle, not
+     `-webkit-text-stroke`: a stroke is centred on the glyph edge and eats half its
+     width out of the letter in any browser that does not honour `paint-order`. */
+  text-shadow:
+    var(--o) 0 0 var(--text-primary),
+    calc(var(--o) * 0.924) calc(var(--o) * 0.383) 0 var(--text-primary),
+    calc(var(--o) * 0.707) calc(var(--o) * 0.707) 0 var(--text-primary),
+    calc(var(--o) * 0.383) calc(var(--o) * 0.924) 0 var(--text-primary),
+    0 var(--o) 0 var(--text-primary),
+    calc(var(--o) * -0.383) calc(var(--o) * 0.924) 0 var(--text-primary),
+    calc(var(--o) * -0.707) calc(var(--o) * 0.707) 0 var(--text-primary),
+    calc(var(--o) * -0.924) calc(var(--o) * 0.383) 0 var(--text-primary),
+    calc(var(--o) * -1) 0 0 var(--text-primary),
+    calc(var(--o) * -0.924) calc(var(--o) * -0.383) 0 var(--text-primary),
+    calc(var(--o) * -0.707) calc(var(--o) * -0.707) 0 var(--text-primary),
+    calc(var(--o) * -0.383) calc(var(--o) * -0.924) 0 var(--text-primary),
+    0 calc(var(--o) * -1) 0 var(--text-primary),
+    calc(var(--o) * 0.383) calc(var(--o) * -0.924) 0 var(--text-primary),
+    calc(var(--o) * 0.707) calc(var(--o) * -0.707) 0 var(--text-primary),
+    calc(var(--o) * 0.924) calc(var(--o) * -0.383) 0 var(--text-primary);
+}
+.lp .film-line-title {
+  --o: 0.32cqw;
+  display: flex;
+  align-items: center;
+  gap: 1.5cqw;
+  font-size: 4.375cqw;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.034em;
+}
+.lp .film-line-sub {
+  --o: 0.28cqw;
+  font-size: 2.875cqw;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.026em;
+}
+.lp .film-line-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 4.5cqw;
+  height: 4.5cqw;
+  border-radius: 999px;
+  border: 0.44cqw solid var(--text-primary);
+  background-color: var(--brand-bright);
+  font-family: var(--font-mono);
+  font-size: 2.25cqw;
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+/* Under ~520px of film the overlay type would fall below 22px for the title and
+   15px for the second line, on the device held furthest from the eye. So the
+   lines move under the picture, in the page's own ink, at a size meant for a
+   phone. The block has a fixed height so a two-line caption replacing a one-line
+   one does not push the button below it up and down. */
+@container (max-width: 520px) {
+  /* Under the picture the lines sit on the page, in the page's ink. */
+  .lp .film-stage {
+    background-color: transparent;
+  }
+  .lp .film-lines {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    margin-top: 10px;
+    height: 64px;
+  }
+  .lp .film-line {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    gap: 4px;
+    white-space: normal;
+    transform: translateY(6px);
+  }
+  .lp .film-line-title,
+  .lp .film-line-sub {
+    text-shadow: none;
+  }
+  .lp .film-line-title {
+    gap: 8px;
+    font-size: 19px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .lp .film-line-sub {
+    font-size: 13.5px;
+    line-height: 1.35;
+    letter-spacing: 0;
+    color: var(--text-secondary);
+  }
+  .lp .film-line-n {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    background-color: var(--brand-mid);
+    color: #fff;
+    font-size: 12px;
+  }
+}
+
+/* The hero's second line of copy, and the question each check answers. */
+/* The check cards' heading row: weight and name on the left, the film's own picture
+   for that check on the right. The picture's outline is the page ink. */
+.lp .check-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lp .check-icon {
+  flex: none;
+  margin-top: -2px;
+  color: var(--text-primary);
+}
+.lp .steps p.ask {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lp .lp-link {
+  color: var(--brand-mid);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lp .lp-link:hover {
+  color: var(--brand-deep);
+}
+
+/* On one column the film goes directly under the headline, ahead of the button,
+   because it is the explanation and the button is what you do once you have it.
+   `display: contents` lifts the copy's children into the grid so they can be
+   ordered around the film without duplicating any of them in the markup. */
+@media (max-width: 900px) {
+  .lp .hero-grid {
+    gap: 14px;
+  }
+  .lp .hero-copy {
+    display: contents;
+  }
+  .lp .hero-copy > .eyebrow {
+    order: 1;
+  }
+  .lp .hero-copy > h1 {
+    order: 2;
+  }
+  .lp .hero-copy > .hero-lead {
+    order: 3;
+  }
+  .lp .hero-grid > .film {
+    order: 4;
+    /* A full-width film on a small tablet or a short window is taller than the
+       screen has room for, and pushes the disclaimer off the first screen. */
+    max-width: 640px;
+  }
+  .lp .hero-copy > .cta-row {
+    order: 5;
+  }
+  .lp .hero-copy > .disc {
+    order: 6;
+  }
+}
+/* On a phone the film says what the lead says, and the header already carries the
+   way to the method; both give their height to keeping the disclaimer on the
+   first screen (CLAUDE.md #4). */
+@media (max-width: 560px) {
+  .lp .hero-copy > .hero-lead,
+  .lp .hero-second {
+    display: none;
+  }
+  .lp .hero {
+    padding-top: 18px;
+  }
+  .lp .film-toggle {
+    right: 8px;
+    bottom: 8px;
+    width: 30px;
+    height: 30px;
+  }
+  .lp .film-sound {
+    right: 46px;
+  }
+  }
+
+/* A reader who asked for less motion gets the film's last frame and its line,
+   until they press play themselves. */
+@media (prefers-reduced-motion: reduce) {
+  .lp .film:not([data-started]) .film-still {
+    display: block;
+  }
+  .lp .film:not([data-started]) .film-line {
+    opacity: 0;
+  }
+  .lp .film:not([data-started]) .film-line:last-child {
+    opacity: 1;
+    transform: none;
+  }
+  .lp .film-line[data-on] {
+    transition: none;
+  }
+}
+
+/* Between the one-column layout and a full desktop, 0.8fr of the measure is too
+   narrow for the headline at its desktop size: at 960px it broke into five lines
+   of one or two words each. Here the two columns are nearly even and the headline
+   steps down, so it sets in three lines at every width in the band. */
+@media (min-width: 901px) and (max-width: 1120px) {
+  .lp .hero-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 28px;
+  }
+  .lp .hero h1 {
+    font-size: clamp(30px, 3.5vw, 38px);
   }
 }

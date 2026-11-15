@@ -88,7 +88,6 @@ test.describe('the #how-it-works anchor', () => {
       'Financial Health',
       'Valuation',
       'Cycle Payoff',
-      'So what does that tell you about Apple today?',
     ]) {
       await expect(
         section.getByRole('heading', { name: heading, exact: true }),

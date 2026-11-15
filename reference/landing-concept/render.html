@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><title>film render</title>
+<style>@font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}@font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+html,body{margin:0;background:#0B1A36;overflow:hidden}#f svg{display:block;width:100vw;height:100vh}</style></head>
+<body><div id="f"></div><script src="kit.js"></script><script src="film.js"></script><script>
+HIDE_TEXT = new URLSearchParams(location.search).get('text') !== '1';
+window.show = t => { document.getElementById('f').innerHTML = filmSVG(t); };
+window.ready = Promise.all([document.fonts.load("700 70px Sora"), document.fonts.load("600 20px Sora"), document.fonts.load("700 30px 'JetBrains Mono'"), document.fonts.load("400 20px 'JetBrains Mono'")]).then(() => document.fonts.ready);
+show(0);
+</script></body></html>

@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 import landingSnapshot from '../app/landing-snapshot.json';
 import universeCountFile from '../app/universe-count.json';
 import mag7Snapshot from '../app/mag7-snapshot.json';
+import { FILM_LINES, FILM_SECONDS } from '../lib/landingFilm';
 import { mag7Facts, type Mag7Snapshot } from '../lib/mag7';
 
 /**
@@ -23,52 +27,44 @@ import { mag7Facts, type Mag7Snapshot } from '../lib/mag7';
 const MAG7 = mag7Snapshot as Mag7Snapshot;
 
 /**
- * The eight approved sections, each identified by something a reader would
- * actually miss. Headings where there is one; otherwise the piece of furniture
- * that IS the section — the strip, the table, the map.
+ * The six approved sections (rebuilt around the landing film, November 2026), each
+ * identified by something a reader would actually miss. Headings where there is
+ * one; otherwise the piece of furniture that IS the section: the film, the strip,
+ * the table.
  */
 const SECTIONS: { name: string; find: (p: import('@playwright/test').Page) => unknown }[] = [
   {
-    name: '① the hook — headline, briefing card and the fold disclaimer',
-    find: (p) => p.getByRole('heading', { level: 1, name: /Which ones are actually on sale/ }),
+    name: '① the hook — headline and the fold disclaimer',
+    find: (p) => p.getByRole('heading', { level: 1, name: /Which ones are worth your time/ }),
   },
+  { name: '① the film', find: (p) => p.locator('.lp [data-film] video') },
   { name: '② the proof strip', find: (p) => p.locator('.lp .strip .cell').nth(3) },
   {
-    name: '③ how a scan works — three steps',
-    find: (p) => p.getByRole('heading', { name: 'Three decisions, then a ranked list.' }),
+    name: '③ the three checks',
+    find: (p) => p.getByRole('heading', { name: 'Every company gets the same three checks.' }),
   },
   { name: '④ the worked run — ranked results table', find: (p) => p.locator('.lp .results-table') },
   {
-    name: '⑤ what a Major Cycle is — the two rulers',
-    find: (p) => p.getByRole('heading', { name: /Shares don.t fall in a straight line/ }),
-  },
-  {
-    name: '⑥ cheap isn’t enough — opportunity map and rating weights',
-    find: (p) => p.getByRole('heading', { name: 'A falling price is not the same as a bargain.' }),
-  },
-  {
-    name: '⑦ free vs paid',
+    name: '⑤ free vs paid',
     find: (p) => p.getByRole('heading', { name: 'The data is free. Our judgement is the paid part.' }),
   },
   {
-    name: '⑧ before you use it — the honesty band',
+    name: '⑥ before you use it — the honesty band',
     find: (p) => p.getByRole('heading', { name: /What this is, and what it isn.t/ }),
   },
 ];
 
 /**
- * The same eight sections as literal substrings, for asserting against the raw
- * server bytes rather than the hydrated DOM. Deliberately duplicated from
- * SECTIONS rather than derived: a locator cannot be run against a string, and
- * the point of this list is to be checkable before any JavaScript exists.
- * Entities are how Next serialises them — `'` becomes `&#x27;`.
+ * The same sections as literal substrings, for asserting against the raw server
+ * bytes rather than the hydrated DOM. Deliberately duplicated from SECTIONS rather
+ * than derived: a locator cannot be run against a string, and the point of this
+ * list is to be checkable before any JavaScript exists.
  */
 const SERVER_MARKERS = [
-  'Which ones are actually on sale?',
-  'Three decisions, then a ranked list.',
+  'Which ones are worth your time?',
+  'data-film',
+  'Every company gets the same three checks.',
   'results-table',
-  'Shares don',
-  'A falling price is not the same as a bargain.',
   'The data is free. Our judgement is the paid part.',
   'What this is, and what it isn',
 ];
@@ -84,13 +80,194 @@ test.describe('the landing page has every approved section', () => {
     });
   }
 
-  test('the two rulers and the map both draw', async ({ page }) => {
+  test('the three check cards each carry their picture', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    // Named separately from section ⑤/⑥ above: the heading can be present while
-    // the instrument beneath it fails to render, which is the same class of
-    // silent loss one level down.
-    await expect(page.locator('.lp .ruler')).toHaveCount(2);
-    await expect(page.locator('.lp .map .dot')).toHaveCount(MAG7.rows.length);
+    await expect(page.locator('.lp #how-it-works .steps .check-icon')).toHaveCount(3);
+  });
+});
+
+/**
+ * The landing film.
+ *
+ * The words are real text beside the video, timed from `lib/landingFilm.ts`. That
+ * file is a COPY of the scene starts in the film's source, so a re-cut film would
+ * leave the lines changing at the wrong moments with nothing red anywhere.
+ */
+test.describe('the landing film', () => {
+  const film = '.lp [data-film]';
+  const FILES = [
+    '/film/majorcycle-1080.webm',
+    '/film/majorcycle-1080.mp4',
+    '/film/majorcycle-720.webm',
+    '/film/majorcycle-720.mp4',
+  ];
+
+  test('the lines are timed to the video file itself', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const duration = await page.evaluate(async (sel) => {
+      const v = document.querySelector<HTMLVideoElement>(`${sel} video`)!;
+      if (!(v.duration > 0)) await new Promise((r) => v.addEventListener('loadedmetadata', r, { once: true }));
+      return v.duration;
+    }, film);
+    // An audio track can run a few hundredths past the last picture.
+    expect(
+      Math.abs(duration - FILM_SECONDS),
+      `the video is ${duration}s, the lines assume ${FILM_SECONDS}s`,
+    ).toBeLessThan(0.25);
+    // Starts rise, begin at zero and end inside the film.
+    expect(FILM_LINES[0]!.at).toBe(0);
+    for (let i = 1; i < FILM_LINES.length; i++) {
+      expect(FILM_LINES[i]!.at).toBeGreaterThan(FILM_LINES[i - 1]!.at);
+    }
+    expect(FILM_LINES.at(-1)!.at).toBeLessThan(duration);
+  });
+
+  test('all nine lines are in the document, in order', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const titles = await page.locator(`${film} .film-line-title`).allTextContents();
+    expect(titles.map((t) => t.replace(/^\d/, '').trim())).toEqual(FILM_LINES.map((l) => l.title));
+  });
+
+  test('the line follows the picture', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    for (const i of [1, 4, 8, 0]) {
+      const at = FILM_LINES[i]!.at + 0.6;
+      await page.evaluate(
+        ([sel, t]) => {
+          const v = document.querySelector<HTMLVideoElement>(`${sel} video`)!;
+          v.pause();
+          v.currentTime = t;
+        },
+        [film, at] as const,
+      );
+      await expect(page.locator(`${film} .film-line[data-on] .film-line-title`)).toContainText(
+        FILM_LINES[i]!.title,
+      );
+    }
+    // CONTROL: exactly one line is on at a time, or the loop above passes on a film showing them all.
+    await expect(page.locator(`${film} .film-line[data-on]`)).toHaveCount(1);
+  });
+
+  test('it starts by itself, silent, and the voice is the reader’s choice', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const state = () =>
+      page.evaluate((sel) => {
+        const v = document.querySelector<HTMLVideoElement>(`${sel} video`)!;
+        return { paused: v.paused, muted: v.muted, autoplay: v.autoplay };
+      }, film);
+    await expect.poll(async () => (await state()).paused).toBe(false);
+    expect(await state()).toMatchObject({ muted: true, autoplay: false });
+
+    const sound = page.getByRole('button', { name: /Voice-over/ });
+    // No "AI voice" label anywhere on the film (owner, 15 Nov 2026).
+    await expect(page.locator(film)).not.toContainText('AI voice');
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+
+    await sound.click();
+    await expect(sound).toHaveAttribute('aria-pressed', 'true');
+    expect((await state()).muted).toBe(false);
+    await expect(page.locator(film)).not.toContainText('AI voice');
+
+    await sound.click();
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+    expect((await state()).muted).toBe(true);
+  });
+
+  test('every video file really carries a voice track', () => {
+    // A sound button over a silent file works perfectly and says nothing. Read off
+    // the files rather than a browser: the test browser ships without the MP4
+    // decoder, and the MP4 is what Safari plays. Each container names its audio
+    // codec in plain bytes.
+    for (const f of FILES) {
+      const bytes = readFileSync(path.join(process.cwd(), 'public', f)).toString('latin1');
+      const marker = f.endsWith('.webm') ? 'A_OPUS' : 'mp4a';
+      expect(bytes.includes(marker), `${f} has no audio track (${marker} not found)`).toBe(true);
+    }
+  });
+
+  test('the voice track is decoded when the film plays', async ({ page }) => {
+    // The control on the test above for the format this browser can play: a
+    // codec named in the file is not yet sound coming out.
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const decoded = await page.evaluate(async (url) => {
+      const v = document.createElement('video');
+      v.muted = true;
+      v.src = url;
+      await new Promise<void>((resolve, reject) => {
+        v.addEventListener('loadeddata', () => resolve(), { once: true });
+        v.addEventListener('error', () => reject(new Error('cannot load ' + url)), { once: true });
+      });
+      await v.play();
+      await new Promise((r) => setTimeout(r, 1500));
+      return (v as HTMLVideoElement & { webkitAudioDecodedByteCount?: number }).webkitAudioDecodedByteCount ?? -1;
+    }, FILES[2]!);
+    test.skip(decoded === -1, 'this engine does not report decoded audio bytes');
+    expect(decoded, 'no audio was decoded from the 720p WebM').toBeGreaterThan(0);
+  });
+
+  test('a paused film that is asked for its voice plays', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const paused = () =>
+      page.evaluate((sel) => document.querySelector<HTMLVideoElement>(`${sel} video`)!.paused, film);
+    await expect.poll(paused).toBe(false);
+    await page.getByRole('button', { name: 'Pause the film' }).click();
+    await expect.poll(paused).toBe(true);
+    await page.getByRole('button', { name: /Voice-over/ }).click();
+    await expect.poll(paused).toBe(false);
+  });
+
+  test('a reader who asked for less motion gets the still, and can still press play', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const paused = () =>
+      page.evaluate((sel) => document.querySelector<HTMLVideoElement>(`${sel} video`)!.paused, film);
+    expect(await paused()).toBe(true);
+    await expect(page.locator(`${film} .film-still`)).toBeVisible();
+    await expect(page.locator(`${film} .film-line`).last()).toHaveCSS('opacity', '1');
+    await page.getByRole('button', { name: 'Play the film' }).click();
+    await expect.poll(paused).toBe(false);
+    await expect(page.locator(`${film} .film-still`)).toBeHidden();
+    await context.close();
+  });
+
+  test('the controls and the lines stay inside the film at every width', async ({ page }) => {
+    for (const width of [320, 375, 600, 768, 1024, 1280, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /Voice-over/ }).click();
+      const out = await page.evaluate((sel) => {
+        const frame = document.querySelector(`${sel} .film-frame`)!.getBoundingClientRect();
+        const fig = document.querySelector(sel)!.getBoundingClientRect();
+        const bad: string[] = [];
+        const boxes = [...document.querySelectorAll(`${sel} .film-toggle`)].map(
+          (e) => e.getBoundingClientRect(),
+        );
+        boxes.forEach((r, i) => {
+          if (r.left < frame.left + 2 || r.right > frame.right - 2 || r.top < frame.top + 2 || r.bottom > frame.bottom - 2)
+            bad.push(`control ${i} leaves the frame`);
+          for (const q of boxes.slice(i + 1))
+            if (r.left < q.right && q.left < r.right && r.top < q.bottom && q.top < r.bottom)
+              bad.push(`control ${i} overlaps another`);
+        });
+        // Every line, not only the one showing: the longest is the one that reaches
+        // the controls, and it is on screen for four seconds in thirty-five.
+        for (const line of document.querySelectorAll(`${sel} .film-line:not([data-in-picture])`)) {
+          for (const part of line.children) {
+            const r = part.getBoundingClientRect();
+            if (r.left < fig.left - 1 || r.right > fig.right + 1) bad.push('a line is wider than the film');
+            for (const q of boxes)
+              if (r.left < q.right && q.left < r.right && r.top < q.bottom && q.top < r.bottom)
+                bad.push(`"${(part.textContent ?? '').slice(0, 24)}" runs under a control`);
+          }
+        }
+        return { bad, controls: boxes.length };
+      }, film);
+      expect(out.bad, `at ${width}px`).toEqual([]);
+      expect(out.controls, 'nothing was measured').toBe(2);
+    }
   });
 });
 
@@ -207,16 +384,6 @@ test.describe('the motion arms the page, it does not gate it', () => {
       ).toBe('none');
     }
 
-    // Present-but-zero-width is the failure this page actually had: the ruler
-    // fills once animated from their final value to their final value because
-    // an inline `style` out-specified the armed rule. Assert real geometry.
-    const fills = page.locator('.lp .ruler-fill');
-    const n = await fills.count();
-    expect(n, 'no ruler fills found at all').toBeGreaterThan(0);
-    for (let i = 0; i < n; i += 1) {
-      const box = await fills.nth(i).boundingBox();
-      expect(box?.width ?? 0, `ruler fill ${i} is zero-width with the flag absent`).toBeGreaterThan(1);
-    }
   });
 });
 
@@ -268,20 +435,6 @@ test.describe('the landing page tells the truth about its own run', () => {
     expect(landingSnapshot.typicalDrawdownPct).toBe(row!.typicalDrawdownPct);
     expect(landingSnapshot.deepestDrawdownPct).toBe(row!.lowerBoundPct);
     expect(landingSnapshot.pullbackEvents).toBe(row!.pullbackEvents);
-  });
-
-  test('the briefing card prints the derived counts, not typed ones', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
-    const f = mag7Facts(MAG7);
-    const briefing = page.locator('.lp .briefing');
-
-    await expect(briefing).toContainText(
-      `Of ${f.total} stocks analysed, ${f.constructiveOrBetter} rate Constructive or better`,
-    );
-    await expect(briefing).toContainText(f.top.ticker);
-    // The ring's number and the sentence's number are the same claim rendered
-    // twice; they were allowed to disagree in the artifact.
-    await expect(briefing.locator('.briefing-ring-num')).toHaveText(String(f.constructiveOrBetter));
   });
 
   /**
@@ -383,79 +536,6 @@ test.describe('the landing page’s layout holds', () => {
     expect(top, 'the fold disclaimer is below the fold').toBeLessThanOrEqual(800);
   });
 
-  test('no map label collides with another label or a quadrant caption', async ({ page }) => {
-    // The label sides are layout tuned to ONE set of coordinates and they expire
-    // when the snapshot is regenerated — Amazon's moved into Apple's the first
-    // time the run was rebuilt. Two short labels touching at a corner is not
-    // something a screenshot review catches.
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/', { waitUntil: 'networkidle' });
-    const hits = await page.evaluate(() => {
-      const boxes = [...document.querySelectorAll('.lp .dlab, .lp .quad .ql')].map((e) => ({
-        t: (e.textContent ?? '').trim(),
-        r: e.getBoundingClientRect(),
-      }));
-      const out: string[] = [];
-      for (let i = 0; i < boxes.length; i++)
-        for (let j = i + 1; j < boxes.length; j++) {
-          const a = boxes[i]!.r;
-          const b = boxes[j]!.r;
-          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
-            out.push(`${boxes[i]!.t} ↔ ${boxes[j]!.t}`);
-        }
-      return out;
-    });
-    expect(hits, `overlapping labels on the Opportunity Map: ${hits.join(', ')}`).toEqual([]);
-    // The control: if the selector ever stops matching, the loop above compares
-    // nothing and passes. Seven tickers plus four captions.
-    const drawn = await page.locator('.lp .dlab, .lp .quad .ql').count();
-    expect(drawn, 'nothing was measured — the overlap check was vacuous').toBe(11);
-  });
-
-  test('every ruler label keeps real clearance inside its card, down to 360px', async ({ page }) => {
-    // ⚠️ Two things here were learned by breaking this test on purpose and
-    // watching it stay GREEN.
-    //
-    // 1. **360px, not 375px.** Removing the clamp this guards leaves 375px
-    //    clearing by 1.1px — still technically inside, so a "does it overflow?"
-    //    check at our stated 375px floor passes and proves nothing. At 360px
-    //    (a common Android width) the same label goes 0.1px out, and at 320px,
-    //    3.2px. The guard has to be run where the defect actually appears.
-    // 2. **A margin, not a boundary.** `>= 0` treats a 1.1px accident as a pass.
-    //    With the clamp every label clears by 7px at every width, so requiring 2px
-    //    asserts the design instead of the edge case.
-    const MIN_CLEARANCE = 2;
-    for (const width of [360, 375, 768, 1280]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('/', { waitUntil: 'networkidle' });
-      const tight = await page.evaluate((min) => {
-        const out: string[] = [];
-        for (const mk of document.querySelectorAll<HTMLElement>('.lp .mk')) {
-          const card = mk.closest('.card-body')!.getBoundingClientRect();
-          const a = getComputedStyle(mk, '::after');
-          // Derived from what the browser COMPUTED, never from what the rule was
-          // meant to say. An earlier version assumed every label was centred and
-          // reported an already-fixed label as still broken — the measurement was
-          // wrong, not the code.
-          const w =
-            parseFloat(a.width) + parseFloat(a.paddingLeft) + parseFloat(a.paddingRight) + 2;
-          const tx = a.transform === 'none' ? 0 : parseFloat(a.transform.split(',')[4] ?? '0');
-          const left = mk.getBoundingClientRect().left + parseFloat(a.left) + tx;
-          const clearance = Math.min(left - card.left, card.right - (left + w));
-          if (clearance < min)
-            out.push(`${mk.dataset['l'] ?? '?'} (${clearance.toFixed(1)}px)`);
-        }
-        return out;
-      }, MIN_CLEARANCE);
-      expect(
-        tight,
-        `ruler labels have under ${MIN_CLEARANCE}px clearance inside their card at ${width}px`,
-      ).toEqual([]);
-      // The control. If the selector stops matching, the loop above measures
-      // nothing and passes — six marks, two rulers.
-      expect(await page.locator('.lp .mk').count(), 'nothing was measured').toBe(6);
-    }
-  });
 });
 
 test.describe('the landing page publishes only what it is allowed to', () => {

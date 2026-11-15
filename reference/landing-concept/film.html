@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MajorCycle landing film — full film</title>
+<style>
+  @font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+  *{box-sizing:border-box}body{margin:0;background:#F0F4F8;color:#0F1923;font-family:'Sora',system-ui,sans-serif}
+  .wrap{width:min(1120px,100% - 32px);margin:0 auto;padding:22px 0 60px}
+  h1{font-size:22px;letter-spacing:-.02em;margin:0 0 6px}p{color:#4A5568;font-size:14px;line-height:1.55;margin:0 0 14px;max-width:78ch}
+  .film{border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,25,35,.14),0 3px 10px rgba(15,25,35,.08);border:1px solid #0F192322;aspect-ratio:16/9;background:#0B1A36}
+  .film svg{display:block;width:100%;height:auto}
+  .bar{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center}
+  button{font:600 14px 'Sora',sans-serif;border-radius:9px;padding:9px 14px;border:1px solid #CBD5E1;background:#fff;color:#1A3A6E;cursor:pointer}
+  button.p{background-color:#1E5CB3;background-image:linear-gradient(135deg,#1E5CB3,#1A3A6E);color:#fff;border-color:transparent}
+  button.on{background:#1A3A6E;color:#fff}
+  .time{font:500 13px 'JetBrains Mono',monospace;color:#4A5568;margin-left:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The landing film · full film · reviewed cut</h1>
+  <p>All nine scenes, playing in order and looping. Use the number buttons to jump to a scene, and <b>Pause</b> to stop on a moment you want to comment on.</p>
+  <div class="film" id="film"></div>
+  <div class="bar"><button class="p" id="pl">Pause</button><button id="rp">From the start</button><button id="tx">Hide text</button><span id="jump"></span><span class="time" id="tm"></span></div>
+</div>
+<script src="kit.js?v=5"></script>
+<script src="film.js?v=5"></script>
+<script>
+const $ = id => document.getElementById(id), Q = new URLSearchParams(location.search), FREEZE = Q.get('t');
+if (Q.get('text') === '0') HIDE_TEXT = true;
+let playing = FREEZE === null, t = FREEZE !== null ? +FREEZE : 0, last = performance.now();
+$('jump').innerHTML = SCENES.map((_, i) => `<button data-s="${i}">${i + 1}</button>`).join(' ');
+const paint = () => { $('film').innerHTML = filmSVG(t); const tt = ((t % FILM_LENGTH) + FILM_LENGTH) % FILM_LENGTH; let i = SCENES.length - 1; while (i > 0 && tt < STARTS_AT[i]) i--;
+  $('tm').textContent = `scene ${i + 1} · ${tt.toFixed(1)}s of ${FILM_LENGTH.toFixed(1)}s`; document.querySelectorAll('#jump button').forEach((b, k) => b.classList.toggle('on', k === i)); };
+function tick(now) { if (playing) { t += Math.min(.1, (now - last) / 1000); paint(); } last = now; requestAnimationFrame(tick); }
+paint(); requestAnimationFrame(tick);
+$('pl').onclick = e => { playing = !playing; e.target.textContent = playing ? 'Pause' : 'Play'; };
+$('rp').onclick = () => { t = 0; paint(); };
+$('tx').onclick = e => { HIDE_TEXT = !HIDE_TEXT; e.target.textContent = HIDE_TEXT ? 'Show text' : 'Hide text'; paint(); };
+$('jump').onclick = e => { const s = e.target.dataset.s; if (s !== undefined) { t = STARTS_AT[+s]; paint(); } };
+</script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MajorCycle landing film — look sheet v1</title>
+<style>
+  @font-face{font-family:'Sora';font-weight:300 800;src:url('fonts/sora-latin-v1.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:400 700;src:url('fonts/jetbrains-mono-latin-v1.woff2') format('woff2')}
+  :root{--deep:#1A3A6E;--mid:#1E5CB3;--bright:#2E7DE8;--ink:#0F1923;--muted:#4A5568;--page:#F0F4F8;--line:#E2E8F0}
+  *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font-family:'Sora',system-ui,sans-serif}
+  .wrap{width:min(1120px,100% - 40px);margin:0 auto;padding:28px 0 80px}
+  h1{font-size:26px;letter-spacing:-.02em;margin:0}h2{font-size:17px;margin:44px 0 6px;letter-spacing:-.01em}
+  p.n{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.55;max-width:80ch}
+  .tag{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(15,25,35,.08),0 3px 10px rgba(15,25,35,.05)}
+  .row{display:grid;gap:14px}.c3{grid-template-columns:repeat(3,1fr)}.c2{grid-template-columns:1.25fr 1fr}
+  .cell{padding:14px 14px 12px}.cell svg{width:100%;height:auto;display:block}
+  .cap{font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center}
+  .sw{display:flex;gap:10px;flex-wrap:wrap}.sw div{width:104px;font:500 11px 'JetBrains Mono',monospace;color:var(--muted)}
+  .sw i{display:block;height:46px;border-radius:10px;border:1px solid rgba(0,0,0,.08);margin-bottom:6px}
+  /* a plain mock of the live landing page, to judge the film against the real background */
+  .site{background:var(--page);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .hdr{display:flex;align-items:center;gap:22px;padding:12px 22px;background:#fff;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .hdr img{width:28px;height:28px;border-radius:7px}.hdr b{color:var(--ink);font-size:15px}.hdr .sp{flex:1}
+  .btn{background-color:var(--mid);background-image:linear-gradient(135deg,#1E5CB3,#1A3A6E);color:#fff;border-radius:9px;padding:9px 14px;font-weight:600;font-size:13px}
+  .btn.o{background:#fff;color:var(--deep);border:1px solid #CBD5E1}
+  .stagewrap{padding:26px 26px 22px}
+  .film{border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,25,35,.14),0 3px 10px rgba(15,25,35,.08);border:1px solid #0F192322}
+  .film svg{display:block;width:100%;height:auto}
+  .under{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+  .disc{font-size:12.5px;color:var(--muted)}.disc i{font:600 10.5px 'JetBrains Mono',monospace;font-style:normal;letter-spacing:.1em;text-transform:uppercase;border:1px solid #CBD5E1;border-radius:5px;padding:3px 6px;margin-right:8px;color:var(--deep)}
+  @media(max-width:760px){.c3,.c2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tag">Look sheet · version 1 · 13 Nov 2026</div>
+  <h1>MajorCycle landing film — the look</h1>
+  <p class="n" style="margin-top:8px">Stills only. Nothing here moves yet. Judge the feel: the investor, the company tiles, the machine, the colours, and one finished frame of scene 1 sitting on the real page background.</p>
+
+  <h2>1 · Scene 1, finished frame, on the landing page</h2>
+  <p class="n">The film sits in one rounded frame on the site's existing light background. The header, button and disclaimer are the site's own. Night scenes use the brand's navy, so the dark frame reads as part of the site, not a different one.</p>
+  <div class="site">
+    <div class="hdr"><img src="logo.png" alt=""><b>MajorCycle</b><span>How it works</span><span>Articles</span><span>Learn</span><span>Pricing</span><span class="sp"></span><span class="btn o">Sign in</span><span class="btn">Create free account</span></div>
+    <div class="stagewrap">
+      <div class="film" id="scene1"></div>
+      <div class="under"><span class="btn" style="padding:12px 18px;font-size:15px">Create a free account →</span><span class="disc"><i>Information only</i>Educational analysis, not financial advice.</span></div>
+    </div>
+  </div>
+
+  <h2>2 · The investor</h2>
+  <p class="n">Deliberately neither a man nor a woman. The head is a rounded square, the same shape as our logo and the company tiles, so the whole film is built from one shape. Hoodie in brand blue.</p>
+  <div class="row c3">
+    <div class="card cell"><svg viewBox="0 0 300 300" id="p1"></svg><div class="cap">Calm</div></div>
+    <div class="card cell"><svg viewBox="0 0 300 300" id="p2"></svg><div class="cap">Overwhelmed (scenes 1–2)</div></div>
+    <div class="card cell"><svg viewBox="0 0 300 300" id="p3"></svg><div class="cap">Relieved (scene 9)</div></div>
+  </div>
+
+  <h2>3 · The company tiles</h2>
+  <p class="n">One small character per company. Grey until checked. They pick up a stamp, a glow and finally a score and a colour as they pass through the machine.</p>
+  <div class="card cell"><svg viewBox="0 0 1060 190" id="tiles"></svg></div>
+
+  <h2>4 · The MajorCycle machine</h2>
+  <p class="n">Navy, with our mark. Tiles go in the funnel, pass three windows (one per check), and roll out of the chute in order.</p>
+  <div class="card cell"><svg viewBox="0 0 1060 420" id="machine"></svg></div>
+
+  <h2>5 · Colours and type</h2>
+  <div class="card cell">
+    <div class="sw">
+      <div><i style="background:#0B1A36"></i>Night #0B1A36</div><div><i style="background:#1A3A6E"></i>Brand deep</div><div><i style="background:#1E5CB3"></i>Brand mid</div><div><i style="background:#2E7DE8"></i>Brand bright</div>
+      <div><i style="background:#F0F4F8"></i>Page</div><div><i style="background:#FFD98A"></i>Lamp light</div><div><i style="background:#C9D3E0"></i>Tile, unchecked</div><div><i style="background:#0F1923"></i>Outline</div>
+      <div><i style="background:#0E8A62"></i>High Conviction</div><div><i style="background:#3F9B3F"></i>Constructive</div><div><i style="background:#D99A1C"></i>Neutral</div><div><i style="background:#E0652A"></i>Cautious</div><div><i style="background:#B83232"></i>Bearish</div>
+    </div>
+    <p class="n" style="margin:16px 0 0">Words on screen: <b style="font-family:Sora">Sora, bold</b>. Numbers and scores: <b style="font-family:'JetBrains Mono'">JetBrains Mono 81</b>. Same as the site.</p>
+  </div>
+</div>
+
+<script>
+const O = '#0F1923';                       // the one outline colour
+const TIER = ['#0E8A62', '#3F9B3F', '#D99A1C', '#E0652A', '#B83232'];
+const set = (id, html) => document.getElementById(id).innerHTML = html;
+
+/* ── The investor. Drawn around (0,0) = centre of the head. ───────────── */
+function person(mood = 'calm', o = {}) {
+  const skin = '#F3CFA8', hood = '#1E5CB3', hoodD = '#17478C', hair = '#2B2F3A';
+  const eye = mood === 'relieved'
+    ? `<path d="M-30 -2q9 -9 18 0M12 -2q9 -9 18 0" fill="none" stroke="${O}" stroke-width="4.5" stroke-linecap="round"/>`
+    : mood === 'over'
+      ? `<ellipse cx="-21" cy="-2" rx="9" ry="10.5" fill="#fff" stroke="${O}" stroke-width="3"/><ellipse cx="21" cy="-2" rx="9" ry="10.5" fill="#fff" stroke="${O}" stroke-width="3"/><circle cx="${-21 + (o.look || 0)}" cy="-1" r="4.2" fill="${O}"/><circle cx="${21 + (o.look || 0)}" cy="-1" r="4.2" fill="${O}"/>`
+      : `<ellipse cx="-21" cy="-2" rx="5" ry="6.5" fill="${O}"/><ellipse cx="21" cy="-2" rx="5" ry="6.5" fill="${O}"/>`;
+  const brow = mood === 'over'
+    ? `<path d="M-34 -24l20 -7M34 -24l-20 -7" stroke="${O}" stroke-width="4.5" stroke-linecap="round"/>`
+    : mood === 'relieved' ? '' : `<path d="M-32 -22h18M14 -22h18" stroke="${O}" stroke-width="4.5" stroke-linecap="round"/>`;
+  const mouth = mood === 'over'
+    ? `<path d="M-13 27q6.5 -7 13 0t13 0" fill="none" stroke="${O}" stroke-width="4" stroke-linecap="round"/>`
+    : mood === 'relieved' ? `<path d="M-15 21q15 15 30 0" fill="#fff" stroke="${O}" stroke-width="4" stroke-linejoin="round"/>`
+      : `<path d="M-10 25q10 7 20 0" fill="none" stroke="${O}" stroke-width="4" stroke-linecap="round"/>`;
+  const sweat = mood === 'over' ? `<path d="M58 -38c7 10 10 15 10 20a10 10 0 0 1 -20 0c0 -5 3 -10 10 -20z" fill="#8FD0FF" stroke="${O}" stroke-width="3"/>` : '';
+  const cheek = mood === 'relieved' ? `<ellipse cx="-36" cy="14" rx="8" ry="5" fill="#F0A58C" opacity=".7"/><ellipse cx="36" cy="14" rx="8" ry="5" fill="#F0A58C" opacity=".7"/>` : '';
+  return `
+  <g>
+    <path d="M-64 150c0 -58 22 -92 64 -92s64 34 64 92z" fill="${hood}" stroke="${O}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-44 80c8 -30 80 -30 88 0c-18 16 -70 16 -88 0z" fill="${hoodD}" stroke="${O}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-12 92v28M12 92v28" stroke="#E7EEF8" stroke-width="4" stroke-linecap="round"/>
+    <rect x="-56" y="-58" width="112" height="108" rx="40" fill="${skin}" stroke="${O}" stroke-width="5"/>
+    <path d="M-56 -22c0 -28 18 -40 44 -40h26c26 0 42 12 42 38c-12 -12 -22 -16 -34 -16c-6 8 -18 10 -26 2c-10 10 -26 10 -34 2c-8 2 -14 8 -18 14z" fill="${hair}" stroke="${O}" stroke-width="5" stroke-linejoin="round"/>
+    ${cheek}${brow}${eye}${mouth}${sweat}
+  </g>`;
+}
+
+/* ── A company tile. (0,0) = centre. s = size. ────────────────────────── */
+function tile(o = {}) {
+  const s = o.s || 70, h = s / 2, fill = o.fill || '#C9D3E0', glow = o.glow || 0;
+  const face = o.face === 'sad'
+    ? `<path d="M${-s * .13} ${s * .2}q${s * .13} ${-s * .1} ${s * .26} 0" fill="none" stroke="${O}" stroke-width="${s * .05}" stroke-linecap="round"/>`
+    : o.face === 'flat' ? `<path d="M${-s * .12} ${s * .17}h${s * .24}" stroke="${O}" stroke-width="${s * .05}" stroke-linecap="round"/>`
+      : `<path d="M${-s * .13} ${s * .13}q${s * .13} ${s * .12} ${s * .26} 0" fill="none" stroke="${O}" stroke-width="${s * .05}" stroke-linecap="round"/>`;
+  return `<g>
+    ${glow ? `<rect x="${-h - 9}" y="${-h - 9}" width="${s + 18}" height="${s + 18}" rx="${s * .34}" fill="${o.glowCol || '#7FE3B3'}" opacity="${.22 + glow * .4}" filter="url(#soft)"/>` : ''}
+    <rect x="${-h}" y="${-h + 5}" width="${s}" height="${s}" rx="${s * .26}" fill="${O}" opacity=".16"/>
+    <rect x="${-h}" y="${-h}" width="${s}" height="${s}" rx="${s * .26}" fill="${fill}" stroke="${O}" stroke-width="${Math.max(3, s * .055)}"/>
+    <rect x="${-h + s * .1}" y="${-h + s * .09}" width="${s * .8}" height="${s * .2}" rx="${s * .08}" fill="#fff" opacity=".28"/>
+    <ellipse cx="${-s * .17}" cy="${-s * .05}" rx="${s * .055}" ry="${s * .075}" fill="${O}"/><ellipse cx="${s * .17}" cy="${-s * .05}" rx="${s * .055}" ry="${s * .075}" fill="${O}"/>
+    ${face}
+    ${o.stamp ? `<g transform="translate(${h - 4} ${-h + 4}) rotate(12)"><circle r="${s * .21}" fill="${o.stamp === 'good' ? '#fff' : '#E5E9F0'}" stroke="${o.stamp === 'good' ? '#0E8A62' : '#7B8798'}" stroke-width="3"/><path d="M0 ${s * .09}c${-s * .2} ${-s * .13} ${-s * .09} ${-s * .26} 0 ${-s * .13}c${s * .09} ${-s * .13} ${s * .2} 0 0 ${s * .13}z" fill="${o.stamp === 'good' ? '#0E8A62' : '#9AA5B5'}"/></g>` : ''}
+    ${o.score != null ? `<g transform="translate(0 ${h + 2})"><rect x="-22" y="-13" width="44" height="26" rx="8" fill="#fff" stroke="${O}" stroke-width="3"/><text y="6" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="15" fill="${O}">${o.score}</text></g>` : ''}
+  </g>`;
+}
+const defs = `<defs><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <radialGradient id="vig" cx="50%" cy="46%" r="72%"><stop offset="55%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#020814" stop-opacity=".62"/></radialGradient></defs>`;
+
+/* ── Sheets ───────────────────────────────────────────────────────────── */
+set('p1', `${defs}<rect width="300" height="300" rx="12" fill="#EEF3FA"/><g transform="translate(150 132)">${person('calm')}</g>`);
+set('p2', `${defs}<rect width="300" height="300" rx="12" fill="#EEF3FA"/><g transform="translate(150 132)">${person('over', { look: 3 })}</g>`);
+set('p3', `${defs}<rect width="300" height="300" rx="12" fill="#EEF3FA"/><g transform="translate(150 132)">${person('relieved')}</g>`);
+
+const lab = (x, t) => `<text x="${x}" y="176" text-anchor="middle" font-family="Sora" font-size="12.5" fill="#4A5568">${t}</text>`;
+set('tiles', `${defs}
+  <g transform="translate(70 76)">${tile({ face: 'flat' })}</g>${lab(70, 'Unchecked')}
+  <g transform="translate(200 76)">${tile({ stamp: 'good' })}</g>${lab(200, 'Healthy')}
+  <g transform="translate(330 76)">${tile({ stamp: 'weak', face: 'sad' })}</g>${lab(330, 'Weak')}
+  <g transform="translate(460 76)">${tile({ stamp: 'good', glow: 1, fill: '#D6F2E4' })}</g>${lab(460, 'Lit up by a check')}
+  <g transform="translate(600 68)">${tile({ fill: TIER[0], score: 84 })}</g>${lab(600, 'High Conviction')}
+  <g transform="translate(700 68)">${tile({ fill: TIER[1], score: 71 })}</g>${lab(700, 'Constructive')}
+  <g transform="translate(800 68)">${tile({ fill: TIER[2], score: 58, face: 'flat' })}</g>${lab(800, 'Neutral')}
+  <g transform="translate(900 68)">${tile({ fill: TIER[3], score: 42, face: 'flat' })}</g>${lab(900, 'Cautious')}
+  <g transform="translate(1000 68)">${tile({ fill: TIER[4], score: 27, face: 'sad' })}</g>${lab(1000, 'Bearish')}`);
+
+function machine() {
+  const win = (x, n, icon, name) => `<g transform="translate(${x} 205)">
+    <rect x="-84" y="-78" width="168" height="150" rx="22" fill="#0B1A36" stroke="${O}" stroke-width="5"/>
+    <rect x="-74" y="-68" width="148" height="130" rx="15" fill="#F6E7C4"/>
+    <rect x="-74" y="-68" width="148" height="130" rx="15" fill="url(#lampw)"/>
+    ${icon}
+    <path d="M-70 -62l40 0l-70 70z" fill="#fff" opacity=".18"/>
+    <g transform="translate(-62 -92)"><circle r="17" fill="#2E7DE8" stroke="${O}" stroke-width="4"/><text y="6" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="17" fill="#fff">${n}</text></g>
+    <text y="100" text-anchor="middle" font-family="Sora" font-weight="600" font-size="14" fill="#DCE8FB">${name}</text></g>`;
+  const heart = `<path d="M-56 4h22l10 -26l14 46l12 -30l8 10h46" fill="none" stroke="#0E8A62" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(0 30) scale(.5)">${tile({ stamp: 'good' })}</g>`;
+  const hill = `<path d="M-74 -30c40 0 60 50 148 86v6h-148z" fill="#9CC59B"/><path d="M-74 -30c40 0 60 50 148 86" fill="none" stroke="${O}" stroke-width="4"/>
+    <path d="M-52 -34v-24l18 7l-18 7" fill="#E0652A" stroke="${O}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M-74 4h148" stroke="${O}" stroke-width="2.5" stroke-dasharray="6 6"/><path d="M-74 40h148" stroke="${O}" stroke-width="3"/>
+    <g transform="translate(26 12) scale(.42)">${tile({ glow: 1, fill: '#D6F2E4' })}</g>`;
+  const bounce = `<path d="M-74 46h148" stroke="${O}" stroke-width="4"/><path d="M-40 -40v70M-40 30q14 -70 34 -86" fill="none" stroke="#0E8A62" stroke-width="4" stroke-dasharray="5 6" stroke-linecap="round"/>
+    <g transform="translate(-6 -44) scale(.42)">${tile({ glow: 1, fill: '#D6F2E4' })}</g><g transform="translate(44 30) scale(.42)">${tile({ face: 'sad' })}</g>`;
+  return `${defs}<defs><linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#244B8C"/><stop offset="1" stop-color="#15305E"/></linearGradient>
+    <radialGradient id="lampw" cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#C79B4B" stop-opacity=".28"/></radialGradient></defs>
+    <rect width="1060" height="420" rx="12" fill="#EEF3FA"/>
+    <ellipse cx="520" cy="392" rx="430" ry="14" fill="#0F1923" opacity=".12"/>
+    <!-- funnel -->
+    <path d="M150 28h150l-34 68h-82z" fill="#2E7DE8" stroke="${O}" stroke-width="5" stroke-linejoin="round"/><path d="M168 40h114" stroke="#fff" stroke-width="5" opacity=".35" stroke-linecap="round"/>
+    <g transform="translate(206 18) rotate(-14) scale(.5)">${tile({ face: 'flat' })}</g><g transform="translate(250 6) rotate(18) scale(.5)">${tile({ face: 'flat' })}</g>
+    <!-- body -->
+    <rect x="120" y="92" width="720" height="262" rx="38" fill="url(#body)" stroke="${O}" stroke-width="6"/>
+    <rect x="134" y="104" width="692" height="20" rx="10" fill="#fff" opacity=".12"/>
+    ${win(292, 1, heart, 'Financial Health')}${win(480, 2, hill, 'Valuation')}${win(668, 3, bounce, 'Cycle Payoff')}
+    <!-- our mark -->
+    <g transform="translate(168 150)"><image href="logo.png" x="-24" y="-24" width="48" height="48"/><rect x="-24" y="-24" width="48" height="48" rx="11" fill="none" stroke="${O}" stroke-width="4"/></g>
+    <circle cx="168" cy="230" r="9" fill="#7FE3B3" stroke="${O}" stroke-width="3"/><circle cx="168" cy="262" r="9" fill="#FFD98A" stroke="${O}" stroke-width="3"/><circle cx="168" cy="294" r="9" fill="#FF9A8A" stroke="${O}" stroke-width="3"/>
+    <!-- legs -->
+    <path d="M190 354v30M770 354v30" stroke="${O}" stroke-width="16" stroke-linecap="round"/><path d="M190 354v30M770 354v30" stroke="#15305E" stroke-width="7" stroke-linecap="round"/>
+    <!-- chute + ranked shelf -->
+    <path d="M838 246h60l96 62v22h-156z" fill="#2E7DE8" stroke="${O}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M886 372h160" stroke="${O}" stroke-width="6" stroke-linecap="round"/>
+    <g transform="translate(906 222) rotate(10) scale(.62)">${tile({ fill: TIER[2], face: 'flat' })}</g>
+    <g transform="translate(922 338) scale(.62)">${tile({ fill: TIER[0], score: 84 })}</g><g transform="translate(978 338) scale(.62)">${tile({ fill: TIER[1], score: 71 })}</g><g transform="translate(1030 338) scale(.62)">${tile({ fill: TIER[2], score: 58, face: 'flat' })}</g>`;
+}
+set('machine', machine());
+
+/* ── Scene 1, finished frame (1600×900) ───────────────────────────────── */
+function scene1() {
+  const tab = (x, y, r, w, col, up) => `<g transform="translate(${x} ${y}) rotate(${r})">
+    <rect width="${w}" height="${w * .66}" rx="12" fill="#F4F8FF" stroke="${O}" stroke-width="5"/><rect width="${w}" height="26" rx="12" fill="#C9D8F2"/><rect y="14" width="${w}" height="12" fill="#C9D8F2"/>
+    <circle cx="16" cy="13" r="4.5" fill="#FF8A7A"/><circle cx="31" cy="13" r="4.5" fill="#FFD98A"/><circle cx="46" cy="13" r="4.5" fill="#7FE3B3"/>
+    <path d="${up ? `M16 ${w * .54}l${w * .2} -${w * .14}l${w * .16} ${w * .08}l${w * .2} -${w * .22}l${w * .22} ${w * .06}` : `M16 ${w * .3}l${w * .2} ${w * .1}l${w * .16} -${w * .05}l${w * .2} ${w * .2}l${w * .22} -${w * .03}`}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 ${w * .6}h${w * .5}" stroke="#B8C6DD" stroke-width="5" stroke-linecap="round"/></g>`;
+  const paper = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect width="130" height="20" rx="3" fill="#F7F3E8" stroke="${O}" stroke-width="4"/></g>`;
+  const note = (x, y, r, c) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect width="62" height="62" rx="5" fill="${c}" stroke="${O}" stroke-width="4"/><path d="M12 20h38M12 34h30M12 46h20" stroke="${O}" stroke-width="3.5" opacity=".55" stroke-linecap="round"/></g>`;
+  return `<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">${defs}
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1A36"/><stop offset="1" stop-color="#152C57"/></linearGradient>
+    <radialGradient id="lamp" cx="50%" cy="0%" r="100%"><stop offset="0" stop-color="#FFE2A0" stop-opacity=".62"/><stop offset=".55" stop-color="#FFD98A" stop-opacity=".16"/><stop offset="1" stop-color="#FFD98A" stop-opacity="0"/></radialGradient>
+    <radialGradient id="scr" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#8FC2FF" stop-opacity=".55"/><stop offset="1" stop-color="#8FC2FF" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#wall)"/>
+  <!-- wall panelling + window with moon -->
+  <path d="M0 250h1600" stroke="#0A1730" stroke-width="5" opacity=".7"/>
+  <g transform="translate(1180 96)"><rect width="300" height="230" rx="16" fill="#07122A" stroke="${O}" stroke-width="7"/><circle cx="212" cy="74" r="34" fill="#F4EBC8"/><circle cx="226" cy="64" r="30" fill="#07122A"/>
+    <circle cx="60" cy="54" r="3" fill="#fff"/><circle cx="118" cy="120" r="2.5" fill="#fff"/><circle cx="80" cy="170" r="2" fill="#fff"/><circle cx="250" cy="170" r="2.5" fill="#fff"/><path d="M150 0v230M0 115h300" stroke="${O}" stroke-width="7"/></g>
+  <!-- clock at 1 am -->
+  <g transform="translate(250 190)"><circle r="76" fill="#F4F8FF" stroke="${O}" stroke-width="8"/><g stroke="${O}" stroke-width="5" stroke-linecap="round"><path d="M0 -62v10M62 0h-10M0 62v-10M-62 0h10"/></g>
+    <path d="M0 0l20 -36" stroke="${O}" stroke-width="8" stroke-linecap="round"/><path d="M0 0v-54" stroke="#E0652A" stroke-width="5" stroke-linecap="round"/><circle r="7" fill="${O}"/>
+    <path d="M-104 -30a110 110 0 0 1 60 -74" fill="none" stroke="#8FC2FF" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 16" opacity=".8"/></g>
+  <!-- lamp cone -->
+  <path d="M800 0l-420 900h840z" fill="url(#lamp)"/>
+  <path d="M800 0v70" stroke="${O}" stroke-width="7"/><path d="M730 124q70 -84 140 0z" fill="#1E5CB3" stroke="${O}" stroke-width="7" stroke-linejoin="round"/><ellipse cx="800" cy="126" rx="42" ry="10" fill="#FFE9B5"/>
+  <!-- floating tabs -->
+  ${tab(120, 360, -9, 250, '#B83232', false)}${tab(1210, 392, 8, 250, '#0E8A62', true)}${tab(420, 250, 5, 200, '#D99A1C', true)}${tab(980, 236, -6, 200, '#B83232', false)}
+  <!-- the investor -->
+  <g transform="translate(800 392) scale(1.5)">${person('over', { look: -2 })}</g>
+  <!-- desk -->
+  <rect x="0" y="690" width="1600" height="210" fill="#5B3A22"/><rect x="0" y="672" width="1600" height="40" rx="6" fill="#7A4E2D" stroke="${O}" stroke-width="7"/>
+  <!-- laptop (back to us) with screen glow on the face -->
+  <ellipse cx="800" cy="500" rx="330" ry="210" fill="url(#scr)"/>
+  <path d="M636 672l24 -116q4 -16 20 -16h240q16 0 20 16l24 116z" fill="#C9D3E0" stroke="${O}" stroke-width="7" stroke-linejoin="round"/>
+  <g transform="translate(800 608)"><image href="logo.png" x="-24" y="-24" width="48" height="48" opacity=".95"/></g>
+  <!-- paper piles, notes, mug, tiles spilling -->
+  ${[0, 1, 2, 3, 4, 5, 6].map(i => paper(150 + (i % 2) * 8, 652 - i * 19, i % 2 ? -2 : 2)).join('')}
+  ${[0, 1, 2, 3, 4].map(i => paper(1270 - (i % 2) * 10, 652 - i * 19, i % 2 ? 3 : -2)).join('')}
+  ${note(330, 590, -8, '#FFE08A')}${note(1150, 600, 9, '#FF9FB0')}${note(410, 616, 6, '#9FE0FF')}
+  <g transform="translate(1060 628)"><rect x="-34" y="-44" width="68" height="74" rx="12" fill="#F4F8FF" stroke="${O}" stroke-width="6"/><path d="M34 -24q30 4 0 38" fill="none" stroke="${O}" stroke-width="6"/><path d="M-10 -66q-10 -14 2 -26M12 -62q-8 -12 2 -22" fill="none" stroke="#DCE8FB" stroke-width="5" stroke-linecap="round" opacity=".7"/></g>
+  <g transform="translate(530 640) rotate(-14) scale(.8)">${tile({ face: 'flat' })}</g><g transform="translate(596 652) rotate(10) scale(.62)">${tile({ face: 'flat' })}</g>
+  <g transform="translate(690 330) rotate(-18) scale(.62)">${tile({ face: 'flat' })}</g><g transform="translate(928 318) rotate(14) scale(.7)">${tile({ face: 'flat' })}</g><g transform="translate(610 420) rotate(12) scale(.5)">${tile({ face: 'flat' })}</g><g transform="translate(1010 440) rotate(-10) scale(.52)">${tile({ face: 'flat' })}</g>
+  <rect width="1600" height="900" fill="url(#vig)"/>
+  <!-- the line -->
+  <text x="88" y="826" font-family="Sora" font-weight="700" font-size="74" letter-spacing="-2.5" fill="#fff" stroke="${O}" stroke-width="10" paint-order="stroke" stroke-linejoin="round">So many companies.</text>
+  </svg>`;
+}
+set('scene1', scene1());
+</script>
+</body>
+</html>

@@ -973,7 +973,7 @@ export const ARTICLES = [
   },
   {
     slug: 'xero-h1-fy27-results',
-    title: 'Xero half-year results 2026: revenue up 46%, profit down 86%',
+    title: 'Xero’s half-year 2026 results, explained',
     question: 'Why did Xero’s profit fall 86% when its revenue rose 46%?',
     answer:
       'Xero’s revenue rose 46% to NZ$1.75 billion in the six months to September 2026, but its net profit fell 86% to NZ$18.5 million, mainly because of Melio, the US business it bought. Its shares rose 6.1% on results day, when it also announced a buy-back of up to A$1 billion, and are still 61.3% below their record.',
@@ -1002,6 +1002,38 @@ export const ARTICLES = [
     published: '2026-11-13',
     reviewed: '2026-11-13',
     minutes: 9,
+  },
+  {
+    slug: 'life360-q3-2026-results',
+    title: 'Life360’s third-quarter 2026 results, explained',
+    question: 'Why did Life360’s shares fall 15.3% when its revenue rose 40%?',
+    answer:
+      'Life360’s revenue rose 40% to US$174.1 million in the September 2026 quarter, and it added a record 188,000 Paying Circles for a third quarter. But it cut the top of its advertising forecast and warned US price rises would slow sign-ups, and its ASX shares fell 15.3% on results day, their fifth such fall in a row.',
+    summary:
+      'Life360’s revenue rose 40% and its shares fell 15.3%, their fifth results-day fall in a row. What it reported, and why the shares fell.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 40% and it added a record 188,000 Paying Circles for a third quarter. ',
+      { strong: 'But it cut the top of its advertising forecast.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+40%' },
+      ', advertising forecast top ',
+      { figure: 'US$102M' },
+      ', shares ',
+      { figure: '−15.3%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: 'US$174.1M', label: 'revenue' },
+      { value: '107.7M', label: 'monthly active users' },
+      { value: '5', label: 'results-day falls in a row' },
+    ],
+    region: 'Australia',
+    published: '2026-11-15',
+    reviewed: '2026-11-15',
+    minutes: 8,
   },
 ] as const satisfies readonly Article[];
 

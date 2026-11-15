@@ -20,7 +20,7 @@
 | Field | Value |
 |---|---|
 | **URL** | `/articles/xero-h1-fy27-results` |
-| **Title tag** | Xero half-year results 2026: revenue up 46%, profit down 86% |
+| **Title tag** | Xero’s half-year 2026 results, explained (owner, 15 Nov: renamed to the same form as the other results articles) |
 | **H1** | Same as the title tag: the site uses one field for both |
 | **Meta description** | Xero's revenue rose 46% and its profit fell 86%. Why both are true, what the A$1 billion buy-back means, and how far the shares have fallen. |
 | **Kind** | Market commentary |

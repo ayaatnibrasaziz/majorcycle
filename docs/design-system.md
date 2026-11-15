@@ -2721,3 +2721,46 @@ west of Greenwich — the off-by-one-day class of 14a.
 
 **Default is ACTIVE.** Only an explicit `is_active === false` renders it. Telling a customer
 that a healthy company has stopped trading is worse than the status quo it replaced.
+
+## The landing film and the film-style pictures — BUILT November 2026
+
+Owner decision: the public site's pictures are one drawn world. The landing page's
+hero is a 35-second cartoon, and the Learn index and the landing's three check cards
+carry pictures drawn with the same kit.
+
+**Where it is drawn.** `reference/landing-concept/`: `kit.js` (the investor, the
+company tile, our mark), `film.js` (nine scenes as one pure function of time),
+`learn-images.js` (the three Learn pictures and the Articles picture). Unlike the
+generated Learn illustrations these replaced, every picture here is code and can be
+re-rendered exactly: `export.mjs` (film frames) and `learn-export.mjs` (stills).
+The earlier generated Learn images are still in `web/public/learn/` and unused.
+
+**The film on the page** (`components/landing/LandingFilm.tsx`, `lib/landingFilm.ts`):
+
+- Four files in `web/public/film/` (1080p and 720p, WebM and MP4); phones take 720p.
+- The nine lines are real text, timed from `lib/landingFilm.ts`: laid over the
+  picture when the film is 520px or wider, set under it when narrower. They are not
+  in the video. `e2e/landing.spec.ts` holds the timings against the file's duration.
+- No `autoplay` attribute. Script starts the film muted, and only for a reader who
+  has not asked for reduced motion or data saving; that reader gets the last frame
+  and a play button. It pauses off screen and in a background tab.
+- **The voice.** Each file carries a narration track: the owner-approved marketing script
+  (one line per scene), read by Kokoro's "Heart" voice (open-source, Apache-2.0; chosen by
+  the owner on 15 Nov 2026 over the channel's Chatterbox narrator, which suits investing
+  videos, not marketing). Each line is its own whole recording: nothing is ever cut inside
+  speech, and `mc-video-tools/landing-film/kokoro_place.py` checks every ending is silent.
+  It is off until the reader presses the sound button. No "AI voice" label on the film
+  (owner: it does not look professional).
+- `proxy.ts` excludes `mp4|webm` from the session matcher, or a signed-out visitor's
+  video request is bounced to `/login`.
+
+**The landing page is six sections** (was eight): the film, the proof strip, the
+three checks, the real seven-company run, free vs paid, the honesty band. The
+Analyst Briefing card, the three-step explainer, the Apple rulers and the
+Opportunity Map still were removed from the page because the film shows them;
+`CycleRulers.tsx`, `OpportunityMapStill.tsx` and `FallByMarketFigure.tsx` are no
+longer rendered anywhere.
+
+**The Articles featured card keeps its line chart.** A film-style picture was tried there
+on 14 November and the owner reversed it on 15 November ("I don't like the vibes"); the
+picture is kept, unshipped, in `reference/landing-concept/retired/`.
