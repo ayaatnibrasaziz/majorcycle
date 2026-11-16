@@ -15,7 +15,13 @@ export function BillingPortalForm({ purpose, children }: { purpose: 'manage' | '
       action="/api/portal"
       method="post"
       className="sub-plan-action"
-      onSubmit={() => track('open_billing_portal', { purpose })}
+      // The submit BUTTON's click, not the form's submit: this form posts natively and
+      // works before hydration, and an onSubmit handler would make it read as a form
+      // the browser handles (e2e/auth-early-input.spec.ts). Enter in a form clicks its
+      // submit button too, so no press is missed.
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest('button[type="submit"]')) track('open_billing_portal', { purpose });
+      }}
     >
       {children}
     </form>

@@ -119,9 +119,13 @@ export function ContactForm({
     <form
       action={formAction}
       className="flex flex-col gap-4"
-      onSubmit={() => {
-        // Read at the moment of sending: a bot fills the trap without typing into it.
-        trapFilled.current = (trapRef.current?.value ?? '').trim() !== '';
+      // Read at the moment of sending (a bot fills the trap without typing into it), on
+      // the submit BUTTON's click rather than onSubmit — the form posts to a server
+      // action and works before hydration (see BillingPortalForm for why it matters).
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest('button[type="submit"]')) {
+          trapFilled.current = (trapRef.current?.value ?? '').trim() !== '';
+        }
       }}
     >
       {/* Honeypot — hidden from real users; bots that fill it are dropped. */}
