@@ -124,7 +124,7 @@ export default async function ArticlePage({
             the terms explained first.
           </>
         }
-        cta={<ArticleCta />}
+        cta={<ArticleCta text={'ctaText' in article ? article.ctaText : undefined} />}
       >
         <Body />
       </ArticleDoc>
