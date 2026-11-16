@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
-import { installAnalytics, trackPageView } from '@/lib/analytics';
+import { applyOptOutFromHash, installAnalytics, trackPageView } from '@/lib/analytics';
 
 /**
  * Google Analytics, loaded AFTER the page and only on the live host (lib/analytics.ts).
@@ -24,6 +24,8 @@ export function GoogleAnalytics() {
   const loaded = useRef(false);
 
   useEffect(() => {
+    // `#analytics-off` / `#analytics-on` — the owner's "don't count this browser" switch.
+    applyOptOutFromHash(window.location.hash);
     const start = () => {
       loaded.current = true;
       const idle =
