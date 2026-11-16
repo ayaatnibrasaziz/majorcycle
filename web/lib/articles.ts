@@ -1035,6 +1035,36 @@ export const ARTICLES = [
     reviewed: '2026-11-15',
     minutes: 8,
   },
+  {
+    slug: 'home-loans-record-fall-bank-shares',
+    title: 'Australia’s home loans just had their biggest fall on record',
+    question: 'What does the record fall in home loans mean for the banks?',
+    answer:
+      'New home loans fell 15.5% in the September quarter and investor loans 32.3%, the biggest falls since the ABS series began in 2002. The RBA blames higher rates and the budget’s tax changes. The banks expect fewer new loans and lower house prices, but so far their shares have not fallen with the housing market.',
+    summary:
+      'New home loans fell 15.5% and investor loans 32.3% in three months, both records. Why, what the banks expect, and what bank shares did in past downturns.',
+    kind: 'commentary',
+    deck: [
+      'Investor loans fell almost twice as far as the previous record. ',
+      { strong: 'Bank shares have not followed house prices down, so far.' },
+    ],
+    finding: [
+      'New home loans ',
+      { figure: '−15.5%' },
+      ', investor loans ',
+      { figure: '−32.3%' },
+      ', both records since 2002.',
+    ],
+    facts: [
+      { value: '$81.2B', label: 'new home loans in the quarter' },
+      { value: '4.85%', label: 'cash rate after five rises' },
+      { value: '73.0%', label: 'of home loans held by the big four' },
+    ],
+    region: 'Australia',
+    published: '2026-11-16',
+    reviewed: '2026-11-16',
+    minutes: 14,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];

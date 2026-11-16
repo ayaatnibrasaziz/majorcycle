@@ -8188,6 +8188,530 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'home-loans-record-fall-bank-shares': () => (
+    <>
+
+      <h2>The short version</h2>
+      <ul>
+        <li>
+          <strong>New home loans fell by a record amount.</strong> Australians took out{' '}
+          <strong>$81.2 billion</strong> of new home loans in the September quarter,{' '}
+          <strong>15.5%</strong> less than in the June quarter. That is the largest quarterly
+          fall since the series began in 2002, the ABS says. The previous largest was{' '}
+          <strong>13.3%</strong>, in mid-2008.
+        </li>
+        <li>
+          <strong>Investors pulled back the most.</strong> Loans to property investors fell{' '}
+          <strong>32.3%</strong> to <strong>$24.7 billion</strong>, almost double the previous
+          record fall of <strong>18.4%</strong> (late 2015). Loans to people buying a home to
+          live in fell <strong>5.3%</strong>.
+        </li>
+        <li>
+          <strong>Two reasons, in the RBA’s and ABS’s own words.</strong> The RBA has raised its
+          cash rate five times this year, from 3.60% to <strong>4.85%</strong>. And the federal
+          budget of 12 May limited negative gearing to new homes and changed how capital gains
+          are taxed, from 1 July 2027. The RBA says new housing lending “has declined sharply in
+          response to tighter monetary policy and recent tax changes”.
+        </li>
+        <li>
+          <strong>House prices are falling, and the banks expect more.</strong> The RBA says
+          national prices were <strong>4.7%</strong> below their peak in September, in “one of
+          the steepest” downturns of the past 50 years. Three of the big four’s economists now
+          expect a total fall of about <strong>11% to 14%</strong> from the peak.
+        </li>
+        <li>
+          <strong>For the banks: fewer new loans and more money set aside.</strong> Home loans
+          are more than half of each big bank’s lending in Australia. The banks expect home
+          lending to grow more slowly, and all four have increased the money they hold for loans
+          that may go bad.
+        </li>
+        <li>
+          <strong>Bank shares have not followed house prices down, at least so far.</strong>{' '}
+          Since the house-price peak in March, the big four’s shares are up{' '}
+          <strong>4.1%</strong> on average, including dividends. In past housing downturns there
+          was no single pattern: what else was happening mattered more.
+        </li>
+      </ul>
+
+      <h2>Seven terms used in this article</h2>
+      <ul>
+        <li>
+          <strong>New loan commitment:</strong> a home loan a borrower has signed up to in the
+          quarter. It counts new borrowing only, not loans people already have, and not
+          refinancing an existing loan with another bank.
+        </li>
+        <li>
+          <strong>Owner-occupier:</strong> someone borrowing to buy a home they will live in.
+        </li>
+        <li>
+          <strong>Investor:</strong> someone borrowing to buy a property they will rent out.
+        </li>
+        <li>
+          <strong>First home buyer:</strong> an owner-occupier buying their first home. The ABS
+          counts them inside the owner-occupier figures, so the two cannot be added together.
+        </li>
+        <li>
+          <strong>Negative gearing:</strong> when a rental property costs its owner more each
+          year (in interest and other costs) than it earns in rent, and the owner deducts that
+          loss from their other income, such as wages, to pay less tax.
+        </li>
+        <li>
+          <strong>Capital gains tax (CGT) discount:</strong> until now, an individual who sold
+          an investment held for more than a year paid tax on only half of the profit.
+        </li>
+        <li>
+          <strong>Cash rate:</strong> the interest rate the RBA sets. Banks’ home-loan rates
+          tend to follow it.
+        </li>
+      </ul>
+
+      <h2>What the ABS reported on 11 November</h2>
+      <p>
+        The ABS measures new home loans every quarter. Its figures are seasonally adjusted,
+        which removes the normal rise and fall across the year so that one quarter can be
+        compared fairly with the one before.
+      </p>
+      <p>
+        <strong>The money lent</strong> in the September quarter:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What the ABS reported on 11 November"
+        columns={[
+          { key: 'c0', label: 'Borrowers', width: '40%' },
+          { key: 'c1', label: 'Value', numeric: true, width: '20%' },
+          { key: 'c2', label: 'On June quarter', numeric: true, width: '20%' },
+          { key: 'c3', label: 'On a year ago', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'All new home loans', c1: '$81.2b', c2: '−15.5%', c3: '−18.1%' } },
+          { cells: { c0: 'Owner-occupiers', c1: '$56.5b', c2: '−5.3%', c3: '−4.6%' } },
+          { cells: { c0: 'First home buyers', c1: '$16.2b', c2: '−8.0%', c3: '−3.7%' } },
+          { cells: { c0: 'Investors', c1: '$24.7b', c2: '−32.3%', c3: '−38.1%' } },
+        ]}
+      />
+      <p>
+        <strong>The number of loans</strong> in the same quarter:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What the ABS reported on 11 November"
+        columns={[
+          { key: 'c0', label: 'Borrowers', width: '40%' },
+          { key: 'c1', label: 'New loans', numeric: true, width: '30%' },
+          { key: 'c2', label: 'On June quarter', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'All new home loans', c1: '111,878', c2: '−15.0%' } },
+          { cells: { c0: 'Owner-occupiers', c1: '76,578', c2: '−5.3%' } },
+          { cells: { c0: 'First home buyers', c1: '26,415', c2: '−8.6%' } },
+          { cells: { c0: 'Investors', c1: '35,301', c2: '−30.6%' } },
+        ]}
+      />
+      <p>
+        (“$81.2b” means $81.2 billion. First home buyers are counted inside owner-occupiers.)
+      </p>
+      <p>
+        <strong>Reading one row:</strong> in the September quarter, investors took out 35,301
+        new home loans worth $24.7 billion. That is 30.6% fewer loans than in the June quarter,
+        and 32.3% less money.
+      </p>
+      <p>
+        <strong>What the table shows:</strong>
+      </p>
+      <ul>
+        <li>
+          <strong>Almost four-fifths of the fall came from investors.</strong> The value of all
+          new home loans fell by <strong>$14.9 billion</strong> in the quarter, and{' '}
+          <strong>$11.8 billion</strong> of that was investors. That is <strong>78.9%</strong>{' '}
+          of the fall, from a group that took out <strong>38.0%</strong> of the money lent in
+          the June quarter.
+        </li>
+        <li>
+          <strong>It is the third quarter in a row of falling investor lending.</strong>{' '}
+          Investor lending peaked at <strong>$43.6 billion</strong> in the December quarter of
+          2025. It is now <strong>43.3%</strong> below that.
+        </li>
+        <li>
+          <strong>Investors’ share of new lending has shrunk.</strong> In the December quarter
+          of 2025 investors took out <strong>40.1%</strong> of the value of new home loans. In
+          the September quarter it was <strong>30.4%</strong>.
+        </li>
+        <li>
+          <strong>The investor fall was everywhere.</strong> The ABS says it was “broad-based,
+          with strong falls recorded in all states and territories”.
+        </li>
+      </ul>
+      <p>
+        In the ABS’s own words: “Our data suggests that investor activity is being influenced by
+        factors beyond increasing borrowing costs, including the potential impacts of tax
+        changes and expectations of lower house prices.” (Dr Mish Tan, ABS head of finance
+        statistics.)
+      </p>
+
+      <h2>How big is this, against 24 years of records?</h2>
+      <p>
+        The ABS’s value series starts in September 2002. Over those 24 years, these are the
+        largest quarterly falls:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How big is this, against 24 years of records?"
+        columns={[
+          { key: 'c0', label: 'Value of new loans', width: '40%' },
+          { key: 'c1', label: 'Quarter', width: '30%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'All home loans: largest fall', c1: 'Sep 2026', c2: '−15.5%' } },
+          { cells: { c0: 'All home loans: second largest', c1: 'Jun 2008', c2: '−13.3%' } },
+          { cells: { c0: 'Investor loans: largest fall', c1: 'Sep 2026', c2: '−32.3%' } },
+          { cells: { c0: 'Investor loans: second largest', c1: 'Dec 2015', c2: '−18.4%' } },
+        ]}
+      />
+      <p>
+        The second-largest falls each came at a moment of its own. Mid-2008 was the start of the
+        global financial crisis. Late 2015 came a year after APRA, the bank regulator, told
+        banks in December 2014 that investor lending growing faster than 10% a year would be “an
+        important risk indicator” for its supervisors. This quarter’s investor fall is almost
+        twice the one in late 2015.
+      </p>
+
+      <h2>Why it happened: rates and tax</h2>
+      <p>
+        <strong>1. Five rate rises this year.</strong> The RBA raised its cash rate on 3
+        February, 17 March, 5 May, 29 September and 3 November, from 3.60% to 4.85%, a total of
+        1.25 percentage points. Its reason, in its 3 November statement: “Inflation remains
+        elevated and recent data indicate that it is broadly based.” Higher rates mean bigger
+        repayments, so people can borrow less. CBA’s own results show this: it says borrowing
+        capacity was “impacted by higher interest rates and Federal Budget tax reform changes”.
+      </p>
+      <p>
+        <strong>2. The budget’s tax changes.</strong> On 12 May 2026 the government announced
+        two changes, which apply from 1 July 2027 (Treasury; the ATO says both are now law):
+      </p>
+      <ul>
+        <li>
+          <strong>Negative gearing</strong> on residential property will be limited to new
+          builds. Someone who buys an established home to rent out after 7:30pm on 12 May 2026
+          can no longer deduct its losses from their wages. Properties already held at that
+          moment are exempt.
+        </li>
+        <li>
+          <strong>Capital gains tax:</strong> the 50% discount is replaced with a discount based
+          on inflation, and a minimum 30% tax rate on capital gains. It applies only to gains
+          made from 1 July 2027.
+        </li>
+      </ul>
+      <p>
+        Both changes fall on investors in established homes, and that is where the fall is
+        largest. CBA’s economists found that new-build lending held up: it fell{' '}
+        <strong>10.4%</strong>, and its share of investor lending rose from{' '}
+        <strong>17.3%</strong> in the March quarter to <strong>27.6%</strong> in September.
+        CBA’s senior economist Ashwin Clarke called that “consistent with the design of the
+        government’s tax policy changes, which favour investors’ purchases of new builds”.
+      </p>
+      <p>
+        <strong>The RBA puts the two together.</strong> Its November Statement on Monetary
+        Policy says housing prices “have declined by more than expected and new housing lending
+        has declined sharply in response to tighter monetary policy and recent tax changes”.
+      </p>
+
+      <h2>House prices: how far they have fallen, and what the banks expect</h2>
+      <p>
+        <strong>So far.</strong> The RBA says national housing prices were <strong>4.7%</strong>{' '}
+        below their recent peak in September, and that the downturn is “one of the steepest over
+        the past 50 years”. Its October Financial Stability Review attributes the fall to “the
+        somewhat restrictive stance of monetary policy and changes to negative gearing and
+        capital gains tax discount policies”. More recent figures from Cotality, a property data
+        company, quoted by CommBank’s economists: national values fell another{' '}
+        <strong>1.2%</strong> in October, leaving them <strong>6.7%</strong> below their March
+        peak.
+      </p>
+      <p>
+        <strong>What the banks’ economists now expect.</strong> Three of the big four publish a
+        forecast of the total fall from peak to trough. Here are the latest, from each bank’s
+        own website or results:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="House prices: how far they have fallen, and what the banks expect"
+        columns={[
+          { key: 'c0', label: 'Bank', width: '40%' },
+          { key: 'c1', label: 'Fall from peak to trough it expects', width: '20%' },
+          { key: 'c2', label: 'Published', width: '20%' },
+          { key: 'c3', label: 'What it expected before', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'CBA', c1: 'about 14% (national)', c2: 'November 2026', c3: 'about 9% (September)' } },
+          { cells: { c0: 'NAB', c1: 'about 14% (combined capital cities)', c2: 'November 2026', c3: '11%' } },
+          { cells: { c0: 'Westpac', c1: '10.9% (March 2026 to 2027)', c2: '2 November 2026 (results)', c3: '7.3% (September)' } },
+        ]}
+      />
+      <p>
+        All three now expect a bigger fall than they did two or three months ago. NAB expects “a
+        floor in house prices likely in Q2 2027”. CommBank expects prices “to continue falling
+        into 2027”. ANZ’s results give a yearly figure instead: in the central case it uses to
+        set aside money for bad loans, Australian house prices fall <strong>4.3%</strong> in
+        2026 and <strong>3.4%</strong> in 2027.
+      </p>
+      <p>
+        These are forecasts, and forecasts are often wrong. We report them because they are what
+        the banks themselves expect, and the banks are the ones holding the loans.
+      </p>
+
+      <h2>What it means for the banks</h2>
+      <p>
+        <strong>First, how much of each bank is home loans.</strong> APRA, the bank regulator,
+        publishes every bank’s loans each month. At 30 September 2026:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What it means for the banks"
+        columns={[
+          { key: 'c0', label: 'Bank', width: '40%' },
+          { key: 'c1', label: 'Home loans', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Share of its loans', numeric: true, width: '20%' },
+          { key: 'c3', label: 'To investors', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'CBA', c1: '$643b', c2: '67.5%', c3: '34.7%' } },
+          { cells: { c0: 'Westpac', c1: '$505b', c2: '64.3%', c3: '33.8%' } },
+          { cells: { c0: 'ANZ', c1: '$334b', c2: '62.3%', c3: '34.2%' } },
+          { cells: { c0: 'NAB', c1: '$351b', c2: '50.6%', c3: '32.8%' } },
+          { cells: { c0: 'All lenders', c1: '$2,510b', c2: '60.4%', c3: '32.6%' } },
+        ]}
+      />
+      <p>
+        (“All lenders” means every bank, credit union and building society that reports to APRA.
+        “Share of its loans” is home loans as a share of all the bank’s loans to Australian
+        residents. “To investors” is the share of its home loans that are to investors.)
+      </p>
+      <p>
+        <strong>Reading one row:</strong> CBA has $643 billion of home loans in Australia. That
+        is 67.5% of all its Australian loans, and 34.7% of those home loans are to investors.
+      </p>
+      <p>
+        Together the big four hold <strong>73.0%</strong> of all the home loans held by banks,
+        credit unions and building societies that report to APRA. NAB is the least reliant on
+        home loans of the four, because more of its lending is to businesses.
+      </p>
+      <p>
+        <strong>Second, what the slowdown means for them, in their own words.</strong> A bank’s
+        profit depends on how much it lends, the margin it earns on each loan, and how many
+        loans go bad. The housing slowdown touches all three.
+      </p>
+      <ol>
+        <li>
+          <strong>Fewer new loans.</strong> Three of the four give a figure, and all three
+          expect home lending across the banking system to grow more slowly: - NAB expects
+          system growth of “~2.6% in FY27”, down from about 7% in FY26. - Westpac’s economists
+          expect housing credit growth of 3.8% in FY27, and 3.0% for investors. - CBA’s
+          economists expect it to slow to 2.0% by the end of 2027. - CBA said its home loan
+          applications in the September quarter “remained lower by 16%” than a year earlier.
+        </li>
+        <li>
+          <strong>More money set aside for loans that may go bad.</strong> Banks hold money
+          aside, called provisions, in case some borrowers cannot repay. Each bank added to them
+          this year: - Westpac’s impairment charge rose <strong>104%</strong> to <strong>$864
+          million</strong> in the year to September. - NAB’s credit impairment charge rose{' '}
+          <strong>85.7%</strong> to <strong>$1,547 million</strong>. NAB said it had
+          “strengthened provisioning to reflect a more challenging environment of slowing
+          growth, declining house prices, higher interest rates and inflationary pressures”. -
+          ANZ’s collective provision charge was <strong>$222 million</strong>, $108 million
+          higher than last year. - CBA said, in its September-quarter update, that higher
+          provisions “primarily” reflected “the impact of lower house prices on the mortgage
+          portfolio”. It also said home loan arrears rose 0.07 percentage points in the quarter.
+        </li>
+        <li>
+          <strong>How bad could it get?</strong> Each bank tests itself against a severe
+          downturn. ANZ’s downside scenario has Australian house prices falling{' '}
+          <strong>27.3%</strong> from peak to trough. NAB’s has them falling{' '}
+          <strong>26.6%</strong> in FY27. These are not forecasts: they are the bad cases the
+          banks hold provisions against.
+        </li>
+      </ol>
+      <p>
+        <strong>Third, what the RBA says about the risk.</strong> In its October Financial
+        Stability Review, the RBA said:
+      </p>
+      <ul>
+        <li>
+          “Australian banks are well positioned to continue lending, even in a significant
+          downturn.”
+        </li>
+        <li>
+          Less than 1% of borrowers owe more than their home is worth. Even if prices fell
+          another 20%, “only around 5 per cent of mortgages would fall into negative equity”.
+        </li>
+        <li>
+          Over 90% of home loans already in trouble are “well secured”: selling the home would
+          repay the loan in full.
+        </li>
+        <li>
+          Investors “have historically exhibited lower rates of arrears and default than
+          owner-occupiers”. But in a falling market they “may be less willing to enter the
+          market and more inclined to sell properties to limit losses”, which “can amplify price
+          declines”.
+        </li>
+      </ul>
+
+      <h2>What bank shares did in past housing downturns</h2>
+      <p>
+        Westpac’s own results pack lists Australia’s three housing downturns since 2008, with
+        their dates. We measured each big bank’s share price over the same months, and the ASX
+        200 for comparison.
+      </p>
+      <p>
+        The four downturns, with Westpac’s dates: January 2008 to January 2009, July 2017 to May
+        2019, January 2022 to January 2023, and March 2026 to now (we measure to the close on 13
+        November 2026).
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What bank shares did in past housing downturns"
+        columns={[
+          { key: 'c0', label: 'Downturn', width: '40%' },
+          { key: 'c1', label: 'House prices fell', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Big four', numeric: true, width: '20%' },
+          { key: 'c3', label: 'ASX 200', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: '2008–09', c1: '6.9%', c2: '−40.9%', c3: '−37.3%' } },
+          { cells: { c0: '2017–19', c1: '8.6%', c2: '+2.6%', c3: '+11.8%' } },
+          { cells: { c0: '2022–23', c1: '7.5%', c2: '+17.3%', c3: '+7.2%' } },
+          { cells: { c0: '2026 so far', c1: '10.9%', c2: '+4.1%', c3: '+7.1%' } },
+        ]}
+      />
+      <p>
+        (“Big four” is the average of the four banks’ share-price moves. The 2026 house-price
+        figure is Westpac’s forecast for the whole downturn.)
+      </p>
+      <p>
+        Each bank on its own:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What bank shares did in past housing downturns"
+        columns={[
+          { key: 'c0', label: 'Downturn', width: '28%' },
+          { key: 'c1', label: 'CBA', numeric: true, width: '18%' },
+          { key: 'c2', label: 'Westpac', numeric: true, width: '18%' },
+          { key: 'c3', label: 'NAB', numeric: true, width: '18%' },
+          { key: 'c4', label: 'ANZ', numeric: true, width: '18%' },
+        ]}
+        rows={[
+          { cells: { c0: '2008–09', c1: '−42.2%', c2: '−35.0%', c3: '−41.1%', c4: '−45.4%' } },
+          { cells: { c0: '2017–19', c1: '+5.1%', c2: '−1.8%', c3: '+1.7%', c4: '+5.6%' } },
+          { cells: { c0: '2022–23', c1: '+22.0%', c2: '+23.1%', c3: '+23.0%', c4: '+0.9%' } },
+          { cells: { c0: '2026 so far', c1: '+3.6%', c2: '−0.2%', c3: '−2.1%', c4: '+15.0%' } },
+        ]}
+      />
+      <p>
+        <strong>How to read it:</strong> from the end of January 2008 to the end of January
+        2009, house prices fell 6.9% (Westpac’s figure). Over the same months, the big four’s
+        shares fell 40.9% on average, and the ASX 200 fell 37.3%.
+      </p>
+      <p>
+        The bank figures include the dividends each bank paid during the downturn. The ASX 200
+        figure is the index itself, which does not include dividends. So the comparison flatters
+        the banks. Even so, the banks did worse than the index in two of the three past
+        downturns.
+      </p>
+      <p>
+        <strong>What the table shows:</strong>
+      </p>
+      <ul>
+        <li>
+          <strong>There is no single pattern.</strong> Bank shares fell hard in 2008–09, roughly
+          stood still in 2017–19, and rose strongly in 2022–23, through downturns of a similar
+          size.
+        </li>
+        <li>
+          <strong>What else was happening mattered more than house prices.</strong> 2008–09 was
+          the global financial crisis, when shares everywhere fell. In 2017–19 the banks were
+          under the Royal Commission into Misconduct in the Banking, Superannuation and
+          Financial Services Industry, whose final report was released on 4 February 2019. In
+          2022–23 the RBA was raising rates from near zero, which lifted the banks’ margins:
+          CBA’s rose from 1.90% to 2.10% in the six months to December 2022 (see our article on
+          the RBA’s rate rises).
+        </li>
+        <li>
+          <strong>In 2026, the banks have neither collapsed nor led the market.</strong> Since
+          the March peak in prices, the big four are up 4.1% on average including dividends,
+          behind the ASX 200’s 7.1% without them. Over the calendar year to 13 November, they
+          are up <strong>5.4%</strong>, against <strong>4.2%</strong> for the index.
+        </li>
+        <li>
+          <strong>The banks have moved far apart.</strong> ANZ is up 15.0% since March and NAB
+          is down 2.1%. All four lend to the same housing market; what differed was each bank’s
+          own news, such as its results and its cost-cutting.
+        </li>
+      </ul>
+      <p>
+        On the day the ABS figures came out, 11 November, AAP reported that “the big four banks
+        retreated” while the ASX 200 rose 0.27%. CBA released its own quarterly update the same
+        day, so its move that day reflects more than the lending figures.
+      </p>
+
+      <h2>What to watch next</h2>
+      <ul>
+        <li>
+          <strong>The RBA’s next decision: Tuesday 8 December, 2:30pm.</strong> It said on 3
+          November that it “will be attentive to the data”.
+        </li>
+        <li>
+          <strong>House prices for November:</strong> Cotality publishes national figures at the
+          start of each month.
+        </li>
+        <li>
+          <strong>Investor lending, month by month:</strong> APRA publishes each bank’s loans
+          monthly. Its next release covers October.
+        </li>
+        <li>
+          <strong>The next ABS lending release: 10 February 2027,</strong> for the December
+          quarter.
+        </li>
+        <li>
+          <strong>The tax changes start on 1 July 2027.</strong> The ATO says investors who
+          bought established homes after 12 May 2026 will not be able to deduct their losses
+          from wages from then on.
+        </li>
+      </ul>
+
+      <h2>What this does not tell you</h2>
+      <ul>
+        <li>
+          <strong>Three past downturns is a small sample,</strong> and each had a different
+          cause. They tell us bank shares do not move in step with house prices. They cannot
+          tell us what happens this time.
+        </li>
+        <li>
+          <strong>A share price moves for many reasons at once.</strong> We do not claim the
+          housing market caused any particular move.
+        </li>
+        <li>
+          <strong>Forecasts are forecasts.</strong> The banks’ expected falls changed within two
+          months. They may change again.
+        </li>
+        <li>
+          <strong>The ABS counts new loans, not existing ones.</strong> Fewer new loans does not
+          mean people are failing to repay the ones they have.
+        </li>
+      </ul>
+      <p>
+        This article is general information only, not financial advice. It does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
