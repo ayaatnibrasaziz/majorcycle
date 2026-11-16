@@ -107,6 +107,18 @@ test.describe('analytics — what leaves the browser', () => {
   });
 });
 
+test("the owner's 'don't count this browser' switch is remembered, and can be undone", async ({ page }) => {
+  // The tag itself never runs here (localhost); what this proves is the SWITCH — that
+  // the link stores the choice the install reads (lib/analytics.ts, OPT_OUT_KEY). Proven
+  // on the wire under the live hostname on 2026-11-16: tag 0, messages 0 after the switch.
+  await page.goto('/#analytics-off');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('mc:analytics-off'))).toBe('1');
+  await page.goto('/learn'); // a later visit, no hash: the choice persists
+  expect(await page.evaluate(() => localStorage.getItem('mc:analytics-off'))).toBe('1');
+  await page.goto('/#analytics-on');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('mc:analytics-off'))).toBeNull();
+});
+
 test('nothing is fetched from Google off the live host', async ({ page }) => {
   const google: string[] = [];
   page.on('request', (r) => {

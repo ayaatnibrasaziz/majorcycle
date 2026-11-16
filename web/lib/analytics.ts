@@ -55,6 +55,36 @@ export function analyticsEnabledFor(hostname: string): boolean {
 }
 
 /**
+ * "Don't count this browser" — for the owner's own devices (2026-11-16).
+ *
+ * Opening `https://www.majorcycle.com/#analytics-off` once in a browser stores a flag
+ * there, and from then on the tag never LOADS in that browser: nothing is sent, so
+ * nothing needs filtering out later. `#analytics-on` undoes it. Per browser and device,
+ * and lost if that browser's site data is cleared — chosen over Google's IP-address
+ * filter because a home or mobile IP changes without warning and the filter then
+ * silently stops matching. Anyone may opt themselves out; that is harmless.
+ */
+export const OPT_OUT_KEY = 'mc:analytics-off';
+
+export function analyticsOptedOut(): boolean {
+  try {
+    return window.localStorage.getItem(OPT_OUT_KEY) === '1';
+  } catch {
+    return false; // storage blocked: nothing to read, so the default applies
+  }
+}
+
+/** Reads `#analytics-off` / `#analytics-on` from the address and stores the choice. */
+export function applyOptOutFromHash(hash: string): void {
+  try {
+    if (hash === '#analytics-off') window.localStorage.setItem(OPT_OUT_KEY, '1');
+    else if (hash === '#analytics-on') window.localStorage.removeItem(OPT_OUT_KEY);
+  } catch {
+    // storage blocked: the switch cannot be remembered, and the tag behaves as usual
+  }
+}
+
+/**
  * The origins Google's documented CSP for GA4 needs. Site-wide, never per route: a
  * client-side navigation keeps the policy of the page the reader started on
  * (lib/turnstile.ts records the day that bit us).
@@ -205,7 +235,12 @@ export function track(event: AnalyticsEvent, params: Params = {}): void {
     // page records the moment it appears (a paywall, a first-login screen) would be
     // lost. Hold it until `installAnalytics` runs — and only on the live host, so a
     // queue never grows where the tag will never come.
-    if (typeof window !== 'undefined' && analyticsEnabledFor(window.location.hostname) && pending.length < 20) {
+    if (
+      typeof window !== 'undefined' &&
+      analyticsEnabledFor(window.location.hostname) &&
+      !analyticsOptedOut() &&
+      pending.length < 20
+    ) {
       pending.push([event, params]);
     }
   } catch {
@@ -251,6 +286,7 @@ export function installAnalytics(): boolean {
   if (typeof window === 'undefined' || !analyticsEnabledFor(window.location.hostname)) {
     return false;
   }
+  if (analyticsOptedOut()) return false;
   const w = window as Window & { dataLayer?: unknown[]; gtag?: Gtag };
   if (w.gtag) return true;
   if (!isShareableAddress(window.location.href) || !isShareableAddress(document.referrer)) {
