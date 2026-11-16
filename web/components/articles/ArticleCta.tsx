@@ -44,7 +44,10 @@ import { PREFERRED_SOURCE } from '@/lib/preferredSource';
  * domain is listed. See `lib/preferredSource.ts` for the two CSP origins it
  * needs and why they are scoped to this section rather than granted site-wide.
  */
-export function ArticleCta() {
+const DEFAULT_TEXT =
+  'The same measurement runs on every stock we cover in the US, Australia and Canada — where a company sits today against its own history of falls and recoveries.';
+
+export function ArticleCta({ text = DEFAULT_TEXT }: { text?: string }) {
   return (
     <aside
       data-article-cta
@@ -58,11 +61,7 @@ export function ArticleCta() {
           "Try it yourself" into the document outline beside "What we measured" —
           which is what a screen-reader user navigates by, and what a crawler
           reads as the page's structure. */}
-      <p className="mt-[6px] text-[var(--text-primary)]">
-        The same measurement runs on every stock we cover in the US, Australia and
-        Canada — where a company sits today against its own history of falls and
-        recoveries.
-      </p>
+      <p className="mt-[6px] text-[var(--text-primary)]">{text}</p>
       <div className="mt-[14px] flex flex-wrap items-center gap-3">
         <Button asChild size="lg">
           <Link href="/signup">Create a free account</Link>

@@ -115,6 +115,14 @@ export interface Article {
    * which is the only place the two can be compared.
    */
   readonly minutes: number;
+  /**
+   * Optional wording for the "Try it yourself" box that closes the article.
+   *
+   * ⚠️ The default sentence is about measuring falls and recoveries, which fits the
+   * drawdown pieces and not every article (owner, 17 Nov 2026, on the home-loans
+   * piece). Whatever is written here must describe what a FREE account shows.
+   */
+  readonly ctaText?: string;
 }
 
 /**
@@ -1064,6 +1072,8 @@ export const ARTICLES = [
     published: '2026-11-16',
     reviewed: '2026-11-16',
     minutes: 14,
+    ctaText:
+      'Each of the big four banks has its own page on MajorCycle: its price history, how far it has fallen and recovered before, and its fundamentals. The same pages cover every stock we track in the US, Australia and Canada.',
   },
 ] as const satisfies readonly Article[];
 
