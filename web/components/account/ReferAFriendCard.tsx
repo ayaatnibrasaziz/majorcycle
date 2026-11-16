@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendReferral } from '@/app/(app)/account/actions';
+import { track } from '@/lib/analytics';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,6 +62,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
       return;
     }
     // Success: keep the name (they'll likely invite again), clear the rest.
+    track('refer_friend'); // the friend's address is NOT sent — only that an invite went
     setSentTo(trimmedEmail);
     setFriendEmail('');
     setMessage('');

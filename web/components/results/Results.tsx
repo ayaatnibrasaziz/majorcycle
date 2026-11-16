@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FolderSearch, Loader2, SearchX } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
+import { track } from '@/lib/analytics';
 import { horizonQueryFromRequest } from '@/lib/horizon';
 import { downloadCsv, toCsv } from '@/lib/ratings';
 import { downloadXlsx } from '@/lib/xlsx';
@@ -120,9 +121,13 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   // Every download used to be called `majorcycle_results`, so a second screen saved
   // over (or beside, as "(1)") the first. The run's date and horizon tell them apart.
   const fileName = exportFileName(runMeta?.startedAt ?? null, params?.preset ?? null);
-  const onExport = () => downloadCsv(`${fileName}.csv`, toCsv(sorted, CSV_COLUMNS));
+  const onExport = () => {
+    downloadCsv(`${fileName}.csv`, toCsv(sorted, CSV_COLUMNS));
+    track('export_results', { format: 'csv', rows: sorted.length });
+  };
   const onExportXlsx = () => {
     void downloadXlsx(`${fileName}.xlsx`, sorted, CSV_COLUMNS);
+    track('export_results', { format: 'xlsx', rows: sorted.length });
   };
 
   // ── Empty: no usable results ───────────────────────────────────────────────

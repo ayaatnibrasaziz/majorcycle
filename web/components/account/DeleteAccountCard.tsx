@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { requestAccountDeletion } from '@/app/(app)/account/actions';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
 import { clearStoredRuns } from '@/lib/analysis';
+import { track } from '@/lib/analytics';
 import {
   deletionSubscriptionLine,
   type DeletionSubscriptionKind,
@@ -107,7 +108,15 @@ export function DeleteAccountCard({
               <form action={requestAccountDeletion}>
                 <input type="hidden" name="timeZone" value={timeZone} />
                 {/* Screener results kept in this browser leave with the account. */}
-                <Button type="submit" variant="destructive" disabled={!ack} onClick={clearStoredRuns}>
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={!ack}
+                  onClick={() => {
+                    track('account_deletion_requested');
+                    clearStoredRuns();
+                  }}
+                >
                   Schedule deletion
                 </Button>
               </form>

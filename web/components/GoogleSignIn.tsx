@@ -118,7 +118,7 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
     async (response: CredentialResponse) => {
       setSigningIn(true);
       const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: response.credential,
         nonce: rawNonceRef.current,
@@ -128,9 +128,11 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         onError(friendlyAuthError(error.message));
         return;
       }
-      // Google cannot tell us whether this was a first sign-in or a return, so both
-      // are `login`; an email sign-up is `sign_up` (SignupForm).
-      track('login', { method: 'google' });
+      // Google sign-in creates the account on first use, so a NEW reader arrives here
+      // too. An account created in the last two minutes is a sign-up; anything older
+      // is a return. (Email sign-ups are `sign_up` in SignupForm.)
+      const created = Date.parse(data.user?.created_at ?? '');
+      track(Date.now() - created < 120_000 ? 'sign_up' : 'login', { method: 'google' });
       // A fresh interactive login is never a confined recovery session — clear any
       // lingering marker (httpOnly, so it must be cleared server-side) before we
       // navigate, otherwise a stale marker would trap this login on the

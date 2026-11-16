@@ -1,0 +1,23 @@
+'use client';
+
+import type { ReactNode } from 'react';
+
+import { track } from '@/lib/analytics';
+
+/**
+ * The "Manage billing" / "Update card" form, with one addition: it records that the
+ * reader opened Stripe's billing portal (where cancelling happens). Still a plain form
+ * POST to /api/portal — no Stripe key in the browser, and it works without JavaScript.
+ */
+export function BillingPortalForm({ purpose, children }: { purpose: 'manage' | 'update_card'; children: ReactNode }) {
+  return (
+    <form
+      action="/api/portal"
+      method="post"
+      className="sub-plan-action"
+      onSubmit={() => track('open_billing_portal', { purpose })}
+    >
+      {children}
+    </form>
+  );
+}

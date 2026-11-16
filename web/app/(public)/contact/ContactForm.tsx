@@ -1,11 +1,12 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendContact, type ContactState } from './actions';
+import { track } from '@/lib/analytics';
 
 const initialState: ContactState = { status: 'idle' };
 
@@ -71,6 +72,16 @@ export function ContactForm({
 } = {}) {
   const [state, formAction, pending] = useActionState(sendOrExplain, initialState);
 
+  // A message reached us. Nothing they wrote — name, email or text — is sent.
+  // ⚠️ NOT when the hidden `company` trap was filled: the server answers a bot with a
+  // silent "success" on purpose (actions.ts), so without this check every caught bot
+  // would count as an enquiry. Read off the form before React swaps it for the notice.
+  const trapRef = useRef<HTMLInputElement>(null);
+  const trapFilled = useRef(false);
+  useEffect(() => {
+    if (state.status === 'success' && !trapFilled.current) track('generate_lead', { form: 'contact' });
+  }, [state.status]);
+
   if (state.status === 'success') {
     return (
       <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] p-6 text-center">
@@ -105,11 +116,25 @@ export function ContactForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form
+      action={formAction}
+      className="flex flex-col gap-4"
+      onSubmit={() => {
+        // Read at the moment of sending: a bot fills the trap without typing into it.
+        trapFilled.current = (trapRef.current?.value ?? '').trim() !== '';
+      }}
+    >
       {/* Honeypot — hidden from real users; bots that fill it are dropped. */}
       <div className="absolute w-px h-px -m-px overflow-hidden" aria-hidden="true">
         <label htmlFor="company">Company (leave blank)</label>
-        <input id="company" name="company" type="text" tabIndex={-1} autoComplete="off" />
+        <input
+          id="company"
+          name="company"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          ref={trapRef}
+        />
       </div>
 
       {/* maxLength on all three: the SERVER caps them too (audit 5A-143, where

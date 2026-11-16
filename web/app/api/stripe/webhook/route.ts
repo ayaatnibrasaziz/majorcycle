@@ -15,6 +15,7 @@ import {
   renewalReminderDue,
   renewalTimeZone,
 } from '@/lib/billing/accessEmails';
+import { reportStripeEventToAnalytics } from '@/lib/analyticsServer';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -650,6 +651,11 @@ export async function POST(request: Request) {
       });
     }
   }
+
+  // Google Analytics: trial starts, conversions, renewals with revenue, cancellations,
+  // failed payments and disputes (lib/analyticsServer.ts). Live mode only, bounded at
+  // 2.5 s, never throws — and AFTER the claim, so a redelivery cannot count twice.
+  await reportStripeEventToAnalytics(event);
 
   return NextResponse.json({ received: true });
 }
