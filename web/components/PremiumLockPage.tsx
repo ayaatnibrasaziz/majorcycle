@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock, AlertCircle } from 'lucide-react';
+
+import { track } from '@/lib/analytics';
 
 import { Button } from '@/components/ui/button';
 import { UpgradeDialog } from '@/components/UpgradeDialog';
@@ -54,6 +56,12 @@ export function PremiumLockPage({
 }) {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+
+  // A whole page behind the paywall (the screener for a free reader). `reason` says
+  // which kind of lock: never had a plan, trial over, payment failed, on hold.
+  useEffect(() => {
+    track('view_paywall', { feature, location: 'page', reason });
+  }, [feature, reason]);
 
   // A hold isn't a sales situation: /api/checkout and /api/portal both refuse this
   // account, so an upgrade prompt would be an offer we decline at the till. Support is

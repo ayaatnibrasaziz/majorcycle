@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Lock, Check, Loader2 } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
+
 import {
   Dialog,
   DialogContent,
@@ -139,6 +141,11 @@ export function UpgradeDialog({
   const [failed, setFailed] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+
+  // Which locked feature a reader reached for — the paywall's own funnel step.
+  useEffect(() => {
+    if (open) track('view_paywall', { feature, location: 'dialog' });
+  }, [open, feature]);
 
   // Loaded when the dialog opens, so the CTA is already correct by the time they
   // reach for it. Fetched once per mount; billing state can't change underneath a

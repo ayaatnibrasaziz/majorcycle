@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       // switched by a build flag below. 25 September 2026: the cookies-and-storage
       // clause and the complaints paragraph, which apply whatever is switched on —
       // so the date is no longer conditional (it was, while the latest change was).
-      updated="15 November 2026"
+      updated="16 November 2026"
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -176,7 +176,11 @@ export default function PrivacyPage() {
                   device and browser type, and your IP address, which Google uses to
                   work out the location and does not store. We do not send your name,
                   your email address or your account details, and we do not use it for
-                  advertising. Google keeps this data for 14 months.
+                  advertising. When your subscription starts, renews, fails to renew or
+                  ends, our server tells Google Analytics that it happened, with the plan
+                  and the amount, linked to the same anonymous browser identifier, so we can
+                  see which pages and sources lead to subscriptions; your card details,
+                  name and email are never part of it. Google keeps this data for 14 months.
                 </li>
                 {/* Added with Layer H2, 2026-09-16 — error monitoring.
                     ⚠️ **CONDITIONAL ON THE DSN, AND THAT IS THE POINT.** Sentry is a
@@ -248,8 +252,8 @@ export default function PrivacyPage() {
               its sign-in prompt. The app keeps a few settings in your browser&rsquo;s
               own storage — such as your chosen time horizon and your latest screen
               results — so it remembers them between pages and visits; these stay on
-              your device. Google Analytics sets its own cookies on our website (named
-              _ga) so it can tell a returning visitor from a new one; you can block them
+              your device. Google Analytics sets its own cookies on our website so it can
+              tell a returning visitor from a new one; you can block them
               in your browser settings, or with Google&rsquo;s opt-out add-on, without
               affecting how the Service works. We do not use cookies or storage for
               advertising or to track you across other websites.

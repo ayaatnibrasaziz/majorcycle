@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalDate } from '@/components/LocalDate';
+import { BillingPortalForm } from '@/components/account/BillingPortalForm';
 import { StartTrialButton } from '@/components/account/StartTrialButton';
 import { ContactSupportButton } from '@/components/account/ContactSupportButton';
 import { paymentFailedAt } from '@/lib/billing/grace';
@@ -339,12 +340,12 @@ export function SubscriptionCard({
               /* Manage billing / Update card → Stripe Customer Portal. A plain form POST
                  to /api/portal, which creates a portal session and 303-redirects to it
                  (no client JS, no Stripe key in the browser). */
-              <form action="/api/portal" method="post" className="sub-plan-action">
+              <BillingPortalForm purpose={pastDue ? 'update_card' : 'manage'}>
                 <Button type="submit" variant={pastDue ? 'primary' : 'secondary'} className="w-full">
                   <CreditCard className="w-4 h-4" strokeWidth={1.8} aria-hidden />
                   {pastDue ? 'Update card' : 'Manage billing'}
                 </Button>
-              </form>
+              </BillingPortalForm>
             )}
           </div>
         </div>

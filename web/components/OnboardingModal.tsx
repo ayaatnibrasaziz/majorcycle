@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { track } from '@/lib/analytics';
 import { Label } from '@/components/ui/label';
 import { acknowledgeDisclaimer } from '@/app/(app)/actions';
 import { RATING_PARTS, RATING_PARTS_TEXT } from '@/lib/ratingDefinition';
@@ -43,6 +44,7 @@ export function OnboardingModal() {
     // can't silently no-op the way a cold browser-client write could.
     const { ok } = await acknowledgeDisclaimer();
     if (ok) {
+      track('onboarding_complete');
       router.refresh();
     } else {
       setError('Something went wrong. Please try again.');

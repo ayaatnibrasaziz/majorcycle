@@ -25,10 +25,14 @@
  *     token_hash, token, access_token, refresh_token, type, session_id, billing,
  *     reason, plan, mode, email, q, id (NOT `checkout`, which counts trial sign-ups).
  *   - Custom dimensions for our event parameters (method, plan, preset, market,
- *     ticker) and a custom metric (tickers), or the reports cannot show them.
- *   - `trial_started`: a custom event created in the dashboard from a page_view whose
- *     address carries `checkout=success` (Stripe's return to /account).
- *   - Key events: sign_up, begin_checkout, trial_started. A path on this site
+ *     ticker, feature, location, reason, format, purpose, payment_type, during_trial,
+ *     form) and custom metrics (tickers, rows, attempt), or the reports cannot show them.
+ *   - Key events: sign_up, begin_checkout, trial_started, subscription_started,
+ *     trial_converted, purchase.
+ *   - Billing events (trial_started and everything after it) come from the SERVER —
+ *     lib/analyticsServer.ts, with the Measurement Protocol secret GA_MP_API_SECRET.
+ *   `python ga_insights.py config` (mc-video-tools/insights) reads all of this back from
+ *   Google and fails on any difference. A path on this site
  * is never personal (`/stocks/us/AAPL` names a company, not a reader), and the
  * tags are what tells the owner a visit came from Reddit or YouTube.
  *
@@ -162,13 +166,20 @@ export function cleanReferrer(href: string): string {
 export type AnalyticsEvent =
   | 'login'
   | 'sign_up'
+  | 'onboarding_complete'
+  | 'view_paywall'
   | 'begin_checkout'
+  | 'open_billing_portal'
   | 'run_screen'
+  | 'export_results'
   | 'download_report'
   | 'request_ticker'
+  | 'refer_friend'
+  | 'generate_lead'
+  | 'account_deletion_requested'
   | 'film_sound_on';
 
-type Params = Record<string, string | number | boolean>;
+type Params = Record<string, string | number | boolean | Array<Record<string, string | number>>>;
 
 type Gtag = (...args: unknown[]) => void;
 
@@ -185,16 +196,41 @@ function gtag(): Gtag | null {
  */
 export function track(event: AnalyticsEvent, params: Params = {}): void {
   try {
-    gtag()?.('event', event, params);
+    const g = gtag();
+    if (g) {
+      g('event', event, params);
+      return;
+    }
+    // Not installed YET: the tag waits for the page to finish loading, so anything a
+    // page records the moment it appears (a paywall, a first-login screen) would be
+    // lost. Hold it until `installAnalytics` runs — and only on the live host, so a
+    // queue never grows where the tag will never come.
+    if (typeof window !== 'undefined' && analyticsEnabledFor(window.location.hostname) && pending.length < 20) {
+      pending.push([event, params]);
+    }
   } catch {
     // Analytics must never break the thing the reader was doing.
   }
 }
 
-/** Record a page view for the current address (cleaned). */
-export function trackPageView(): void {
+/** Events recorded before the tag was installed (see `track`). */
+const pending: Array<[AnalyticsEvent, Params]> = [];
+
+/**
+ * Record a page view for the current address (cleaned).
+ *
+ * ⚠️ WAITS FOR A TITLE. The ticker page streams its `<title>` in after the route has
+ * changed (CLAUDE.md, P7: it sits in the body), so a view sent on the path change
+ * reached Google with a BLANK page name — measured 2026-11-15 on /stocks/us/AAPL,
+ * while every other page's name was right. Up to 3 s, then it goes anyway.
+ */
+export function trackPageView(waited = 0): void {
   const g = gtag();
   if (!g) return;
+  if (!document.title && waited < 3000) {
+    window.setTimeout(() => trackPageView(waited + 100), 100);
+    return;
+  }
   try {
     g('set', {
       page_location: cleanLocation(window.location.href),
@@ -257,6 +293,8 @@ export function installAnalytics(): boolean {
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
   });
+  // Queued AFTER `config`, so they carry this page's cleaned address.
+  for (const [event, params] of pending.splice(0)) w.gtag('event', event, params);
   const s = document.createElement('script');
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;

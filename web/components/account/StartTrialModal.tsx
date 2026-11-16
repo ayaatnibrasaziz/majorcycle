@@ -91,7 +91,14 @@ export function StartTrialModal({
         setLoading(false);
         return;
       }
-      track('begin_checkout', { plan });
+      // Google's recommended begin_checkout shape: currency, value, items.
+      const value = isAnnual ? prices.annual : prices.monthly;
+      track('begin_checkout', {
+        plan,
+        currency: currency.toUpperCase(),
+        value,
+        items: [{ item_id: `majorcycle_${plan}`, item_name: `MajorCycle ${plan}`, price: value, quantity: 1 }],
+      });
       // Hand off to Stripe's hosted Checkout page.
       window.location.href = data.url;
     } catch {
