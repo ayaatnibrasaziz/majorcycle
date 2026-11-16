@@ -64,6 +64,23 @@ export function gaClientIdFromCookie(cookieHeader: string | null): string | null
   return CLIENT_ID.test(id) ? id : null;
 }
 
+/**
+ * The current Analytics SESSION id, from the `_ga_<container>` cookie. Google's
+ * Measurement Protocol guide: an event sent with the session's id is credited to that
+ * session's source/medium/campaign — so a trial that starts minutes after a visit from
+ * Reddit is attributed to that visit, not just to the person. Two cookie formats exist:
+ * `GS2.1.s1794785244$o1$g1$t…` (current) and `GS1.1.1794785244.1.1.…` (older).
+ */
+export function gaSessionIdFromCookie(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const suffix = GA_MEASUREMENT_ID.replace(/^G-/, '');
+  const m = new RegExp(`(?:^|;\\s*)_ga_${suffix}=([^;]+)`).exec(cookieHeader);
+  if (!m) return null;
+  const v = decodeURIComponent(m[1]!);
+  const id = v.startsWith('GS2.') ? /(?:^|[.$])s(\d{6,})/.exec(v)?.[1] : v.split('.')[2];
+  return id && /^\d{6,}$/.test(id) ? id : null;
+}
+
 /** A stable stand-in when no Analytics id was captured: one-way, from the Stripe customer id. */
 function fallbackClientId(customer: string | null): string {
   const h = createHash('sha256').update(`mc-ga:${customer ?? 'unknown'}`).digest();
@@ -83,6 +100,36 @@ function planOf(sub: Stripe.Subscription): string {
 }
 
 /**
+ * Google's recommended commerce shape on every plan event: `currency`, `value` and one
+ * `items` entry, so these line up with `purchase` in the monetisation reports. The value
+ * is the plan's price per billing period (what the subscription is worth), in the
+ * currency Stripe charges. Absent price → no value rather than a guessed one.
+ */
+function planCommerce(sub: Stripe.Subscription): Record<string, string | number | Array<Record<string, string | number>>> {
+  const plan = planOf(sub);
+  const cents = (sub.items?.data?.[0]?.price as { unit_amount?: number | null } | undefined)?.unit_amount;
+  const currency = sub.currency.toUpperCase();
+  if (cents == null) return { plan, currency };
+  const value = cents / 100;
+  return {
+    plan,
+    currency,
+    value,
+    items: [{ item_id: `majorcycle_${plan}`, item_name: `MajorCycle ${plan}`, price: value, quantity: 1 }],
+  };
+}
+
+/**
+ * Two fields Google's Measurement Protocol guide asks for: `engagement_time_msec`
+ * (without it an event is left out of Realtime and engagement figures) and, where the
+ * session is known, `session_id` (credits the event to that visit's source).
+ */
+function withSession(params: GaEvent['params'], meta: Record<string, string> | null | undefined): GaEvent['params'] {
+  const sid = meta?.['ga_session_id'];
+  return { ...params, engagement_time_msec: 1, ...(sid && /^\d{6,}$/.test(sid) ? { session_id: sid } : {}) };
+}
+
+/**
  * Pure: which Analytics events a Stripe event means. No network, so it is tested
  * directly (e2e/analytics-server.spec.ts) against the shapes Stripe sends.
  */
@@ -95,7 +142,8 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
       if (!name) return null;
       return {
         clientId: clientIdFrom(sub.metadata, custId(sub.customer)),
-        events: [{ name, params: { plan: planOf(sub), currency: sub.currency.toUpperCase() } }],
+        // Happens during the checkout visit, so it carries that visit's session id.
+        events: [{ name, params: withSession(planCommerce(sub), sub.metadata) }],
       };
     }
     case 'customer.subscription.updated': {
@@ -104,12 +152,12 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
       const events: GaEvent[] = [];
       const plan = planOf(sub);
       if (prev.status === 'trialing' && sub.status === 'active') {
-        events.push({ name: 'trial_converted', params: { plan } });
+        events.push({ name: 'trial_converted', params: withSession(planCommerce(sub), null) });
       }
       if ('cancel_at_period_end' in prev && prev.cancel_at_period_end !== sub.cancel_at_period_end) {
         events.push({
           name: sub.cancel_at_period_end ? 'subscription_cancel_requested' : 'subscription_cancel_reverted',
-          params: { plan, during_trial: sub.status === 'trialing' ? 'yes' : 'no' },
+          params: withSession({ plan, during_trial: sub.status === 'trialing' ? 'yes' : 'no' }, null),
         });
       }
       return events.length ? { clientId: clientIdFrom(sub.metadata, custId(sub.customer)), events } : null;
@@ -121,11 +169,11 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
         clientId: clientIdFrom(sub.metadata, custId(sub.customer)),
         events: [{
           name: 'subscription_ended',
-          params: {
+          params: withSession({
             plan: planOf(sub),
             during_trial: endedInTrial ? 'yes' : 'no',
             reason: sub.cancellation_details?.reason ?? 'unknown',
-          },
+          }, null),
         }],
       };
     }
@@ -135,17 +183,20 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
       const meta = inv.parent?.subscription_details?.metadata ?? null;
       const value = inv.amount_paid / 100;
       const currency = inv.currency.toUpperCase();
+      const first = inv.billing_reason === 'subscription_create';
       return {
         clientId: clientIdFrom(meta, custId(inv.customer)),
         events: [{
           name: 'purchase',
-          params: {
+          // A first payment is made during the checkout visit (no trial), so it carries
+          // that session; a renewal months later must NOT reuse an old session id.
+          params: withSession({
             transaction_id: inv.id ?? event.id,
             value,
             currency,
-            payment_type: inv.billing_reason === 'subscription_create' ? 'first_payment' : 'renewal',
+            payment_type: first ? 'first_payment' : 'renewal',
             items: [{ item_id: 'majorcycle_subscription', item_name: 'MajorCycle subscription', price: value, quantity: 1 }],
-          },
+          }, first ? meta : null),
         }],
       };
     }
@@ -153,7 +204,7 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
       const inv = event.data.object as Stripe.Invoice;
       return {
         clientId: clientIdFrom(inv.parent?.subscription_details?.metadata ?? null, custId(inv.customer)),
-        events: [{ name: 'payment_failed', params: { attempt: inv.attempt_count ?? 0, value: inv.amount_due / 100, currency: inv.currency.toUpperCase() } }],
+        events: [{ name: 'payment_failed', params: withSession({ attempt: inv.attempt_count ?? 0, value: inv.amount_due / 100, currency: inv.currency.toUpperCase() }, null) }],
       };
     }
     case 'charge.dispute.created': {
@@ -161,7 +212,7 @@ export function gaHitForStripeEvent(event: Stripe.Event): GaHit | null {
       const charge = typeof d.charge === 'string' ? null : d.charge;
       return {
         clientId: fallbackClientId(custId(charge?.customer ?? null)),
-        events: [{ name: 'dispute_opened', params: { value: d.amount / 100, currency: d.currency.toUpperCase(), reason: d.reason } }],
+        events: [{ name: 'dispute_opened', params: withSession({ value: d.amount / 100, currency: d.currency.toUpperCase(), reason: d.reason }, null) }],
       };
     }
     default:

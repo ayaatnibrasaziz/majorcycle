@@ -179,7 +179,7 @@ export type AnalyticsEvent =
   | 'account_deletion_requested'
   | 'film_sound_on';
 
-type Params = Record<string, string | number | boolean>;
+type Params = Record<string, string | number | boolean | Array<Record<string, string | number>>>;
 
 type Gtag = (...args: unknown[]) => void;
 

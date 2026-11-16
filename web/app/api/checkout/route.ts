@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { gaClientIdFromCookie } from '@/lib/analyticsServer';
+import { gaClientIdFromCookie, gaSessionIdFromCookie } from '@/lib/analyticsServer';
 import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
@@ -175,6 +175,7 @@ export async function POST(request: Request) {
 
   const stripeCustomerId = profile?.stripe_customer_id ?? null;
   const gaClientId = gaClientIdFromCookie(request.headers.get('cookie'));
+  const gaSessionId = gaSessionIdFromCookie(request.headers.get('cookie'));
 
   try {
     const session = await getStripe().checkout.sessions.create({
@@ -191,7 +192,12 @@ export async function POST(request: Request) {
         // reader's ANONYMOUS Analytics id (lib/analyticsServer.ts), so a renewal months
         // later is still credited to the source that brought them; absent when the
         // browser held no `_ga` cookie.
-        metadata: { user_id: user.id, ...(gaClientId ? { ga_client_id: gaClientId } : {}) },
+        // `ga_session_id` (also anonymous) credits the trial start to THIS visit's source.
+        metadata: {
+          user_id: user.id,
+          ...(gaClientId ? { ga_client_id: gaClientId } : {}),
+          ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
+        },
       },
       // Reuse the existing Customer if we have one; otherwise let Checkout create it
       // and prefill the email (the webhook captures the new id). `customer` and
