@@ -5,6 +5,7 @@ import {
   ARTICLES_INDEX_PATH,
   FEATURED_SLUG,
   RELATED_LIMIT,
+  type Article,
   articlePath,
   relatedArticles,
   featuredArticle,
@@ -630,6 +631,34 @@ test.describe('the Articles section', () => {
       ).toBeLessThanOrEqual(320);
       expect(a.answer.length, `${a.slug}: the answer is too short to be one`).toBeGreaterThan(80);
     }
+  });
+
+  test('a search title fits in a Google result, names the company, and is the page title', async ({ page }) => {
+    // SEO audit 2026-11-19: Google cuts a title at roughly 60 characters, and the
+    // whole point of `searchTitle` is the figure at the END of it. Bounded below as
+    // well — a search title that is just the company name is no improvement on the
+    // heading it replaces (11i: a bound on one side tests half the risk).
+    const withTitle = (ARTICLES as readonly Article[]).filter((a) => a.searchTitle);
+    expect(withTitle.length, 'no article carries a searchTitle — the guard below would test nothing').toBeGreaterThan(20);
+    const seen = new Set<string>();
+    for (const a of withTitle) {
+      const t = a.searchTitle!;
+      expect(t.length, `${a.slug}: searchTitle is ${t.length} characters; Google cuts at ~60`).toBeLessThanOrEqual(60);
+      expect(t.length, `${a.slug}: searchTitle is too short to say anything`).toBeGreaterThan(30);
+      expect(seen.has(t), `${a.slug}: searchTitle duplicates another article's`).toBe(false);
+      seen.add(t);
+      // The slug's first word is the company (or subject); the search title must carry it too,
+      // compared letters-only so "McDonald’s" matches "mcdonalds".
+      const letters = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const subject = a.slug.split('-')[0];
+      expect(letters(t), `${a.slug}: searchTitle does not name "${subject}"`).toContain(subject);
+    }
+    // And it is what the page actually serves, in <title> and on the share card, with no suffix.
+    const a = withTitle[withTitle.length - 1]!;
+    await page.goto(articlePath(a.slug));
+    await expect(page).toHaveTitle(a.searchTitle!);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', a.searchTitle!);
+    await expect(page.locator('h1')).toHaveText(a.title);
   });
 
   test('a column declared alignRight really is right-aligned on screen', async ({ page }) => {

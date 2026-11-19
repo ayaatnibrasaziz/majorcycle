@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+import { readFileSync } from 'node:fs';
+
+import { ARTICLES, type Article, articlePath } from '@/lib/articles';
+import { INDEXNOW_KEY, INDEXNOW_KEY_PATH } from '@/lib/indexnow';
 import { OG_IMAGE, PUBLIC_PAGES, pageUrl } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
 
@@ -123,6 +127,18 @@ test.describe('robots.txt', () => {
   });
 });
 
+test.describe('the IndexNow key file', () => {
+  test('is served signed out, holds the key, and matches the file on disk', async ({ request }) => {
+    // Bing checks this file before it accepts a submission. Bounced to /login (the
+    // fate of /robots.txt until G1), every `pnpm indexnow` would be rejected 403 and
+    // nothing on the site would look wrong.
+    const res = await request.get(INDEXNOW_KEY_PATH, { maxRedirects: 0 });
+    expect(res.status(), `${INDEXNOW_KEY_PATH} must be 200, not a redirect`).toBe(200);
+    expect((await res.text()).trim()).toBe(INDEXNOW_KEY);
+    expect(readFileSync(`public${INDEXNOW_KEY_PATH}`, 'utf8').trim()).toBe(INDEXNOW_KEY);
+  });
+});
+
 test.describe('sitemap.xml', () => {
   test('is served, not redirected', async ({ request }) => {
     const res = await request.get('/sitemap.xml', { maxRedirects: 0 });
@@ -175,9 +191,12 @@ test.describe('page metadata on the rendered HTML', () => {
       // og:title is stated explicitly by pageMetadata() rather than relying on the
       // root layout's title template reaching it — a framework detail that would
       // fail silently as an untitled share card.
+      // An article with a `searchTitle` shows exactly that, with no suffix (SEO audit
+      // 2026-11-19); every other page carries the brand.
+      const searchTitle = (ARTICLES as readonly Article[]).find((a) => articlePath(a.slug) === page.path)?.searchTitle;
       await expect(pw.locator('meta[property="og:title"]')).toHaveAttribute(
         'content',
-        /MajorCycle/,
+        searchTitle ?? /MajorCycle/,
       );
       await expect(pw.locator('meta[property="og:url"]')).toHaveAttribute(
         'content',

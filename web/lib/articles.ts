@@ -61,8 +61,21 @@ export interface Article {
    * everywhere the old one was ever shared.
    */
   readonly slug: string;
-  /** `<h1>` and the browser title. */
+  /** `<h1>`, and the browser title when there is no `searchTitle`. */
   readonly title: string;
+  /**
+   * The title Google and a share card show, when it should differ from the `<h1>`.
+   *
+   * SEO audit 2026-11-19: the `<h1>` is written for a reader already on the page
+   * ("Nvidia's results for the quarter to October 2026, explained"), and it was
+   * also the only title a searcher ever saw — at a 0.6% click rate. This one is
+   * written for the results page: the words people type ("Q3 2026 earnings"),
+   * the checked figure, and at most 60 characters so Google shows it whole.
+   * Rendered exactly as written, without " | MajorCycle" (Google prints the site
+   * name above the title already). Every figure in it must be one the article's
+   * own summary or question already states; `articles.spec.ts` caps the length.
+   */
+  readonly searchTitle?: string;
   /** The question a real person types, in their words rather than ours. */
   readonly question: string;
   /**
@@ -342,6 +355,7 @@ export const ARTICLES = [
   {
     slug: 'netflix-q3-2026-results',
     title: 'Netflix’s third-quarter 2026 results, explained',
+    searchTitle: 'Netflix Q3 2026 earnings: why the shares fell',
     question: 'Why did Netflix shares fall after its Q3 2026 results?',
     answer:
       'Netflix’s third-quarter revenue of $12.87 billion landed almost exactly on its own forecast, and its operating profit came in 4.5% above it. But it cut its 2026 advertising revenue outlook from about $3 billion to about $2.7 billion. The next day the shares fell 5.3%, closing 51.4% below their June 2025 record.',
@@ -374,6 +388,7 @@ export const ARTICLES = [
   {
     slug: 'meta-q3-2026-results',
     title: 'Meta’s third-quarter 2026 results, explained',
+    searchTitle: 'Meta Q3 2026 earnings: a $9.9 billion charge, and the shares',
     question: 'Why did Meta shares fall after its Q3 2026 results?',
     answer:
       'Meta’s third-quarter revenue of $64.60 billion came in above the top of its own forecast, up 26% on a year earlier. Its operating profit fell 37% because of a $9.89 billion legal charge, and it announced new non-voting shares that will work like a two-for-one stock split in January. The shares fell 7.0% the next day.',
@@ -406,6 +421,7 @@ export const ARTICLES = [
   {
     slug: 'tesla-q3-2026-results',
     title: 'Tesla’s third-quarter 2026 results, explained',
+    searchTitle: 'Tesla Q3 2026 earnings: the profit squeeze, explained',
     question: 'Why did Tesla shares fall after its Q3 2026 results?',
     answer:
       'Tesla’s third-quarter revenue was $28.05 billion, flat on a year earlier. Its operating profit fell 56%, and it cut its 2026 spending plan to more than $20 billion, from more than $25 billion. Its board has formed a committee to explore a closer tie with SpaceX. The shares fell 3.1% the next day.',
@@ -470,6 +486,7 @@ export const ARTICLES = [
   {
     slug: 'rba-rate-rises-asx-bank-shares',
     title: 'What happened to ASX bank shares each time the RBA raised rates',
+    searchTitle: 'ASX bank shares and RBA rate rises: every move since 2022',
     question: 'What happens to ASX bank shares when the RBA raises rates?',
     answer:
       'Across 17 RBA rate rises since 2022, the big four banks’ shares barely moved on the day: the average move was almost exactly zero, because the rise was usually expected. The big moves came on the two days the RBA surprised the market. In 2026, the banks’ own results moved their shares far more than any decision did.',
@@ -502,6 +519,7 @@ export const ARTICLES = [
   {
     slug: 'microsoft-q1-fy27-results',
     title: 'Microsoft’s September-quarter 2026 results, explained',
+    searchTitle: 'Microsoft Q1 FY27 earnings: Azure, OpenAI and spending',
     question: 'What did Microsoft report for the September quarter of 2026?',
     answer:
       'Microsoft’s revenue for the three months to September 2026 was $92.3 billion, up 19% and above its own forecast. Azure grew 48%. Its cash spending on property and equipment doubled, to $39.4 billion, and free cash flow fell 27%. After hours the shares rose 2.9%, but by the next day’s close they were 0.2% lower.',
@@ -534,6 +552,7 @@ export const ARTICLES = [
   {
     slug: 'alphabet-q3-2026-results',
     title: 'Alphabet’s third-quarter 2026 results, explained',
+    searchTitle: 'Alphabet Q3 2026 earnings: why cash flow turned negative',
     question: 'Why did Alphabet’s free cash flow turn negative in Q3 2026?',
     answer:
       'Alphabet’s third-quarter revenue was $127.6 billion, up 25%, and Google Cloud’s more than doubled. Its cash spending, $51.4 billion, was more than its operations brought in, and a loss on its SpaceX shares cut net income 24%. The next day, its shares fell 12.6%, their biggest fall after results in more than ten years.',
@@ -566,6 +585,7 @@ export const ARTICLES = [
   {
     slug: 'eli-lilly-q3-2026-results',
     title: 'Eli Lilly’s third-quarter 2026 results, explained',
+    searchTitle: 'Eli Lilly Q3 2026 earnings: revenue up 39% as prices fell',
     question: 'How did Eli Lilly grow revenue 39% while its prices fell 15%?',
     answer:
       'Eli Lilly’s third-quarter revenue rose 39% to $24.4 billion, even though its prices were 15% lower than a year earlier: it sold 53% more. It raised its 2026 revenue outlook for a third time, to $91 billion to $92 billion, and its shares rose 6.6% to a record close.',
@@ -598,6 +618,7 @@ export const ARTICLES = [
   {
     slug: 'intel-q3-2026-results',
     title: 'Intel’s third-quarter 2026 results, explained',
+    searchTitle: 'Intel Q3 2026 earnings: why the shares fell 28.6%',
     question: 'Why did Intel’s shares fall 28.6% after it beat its own forecast?',
     answer:
       'Intel’s third-quarter revenue rose 21% to $16.5 billion, ahead of its own forecast, and its data-centre sales rose 78%. But it forecast lower revenue and a gross margin six points lower for the fourth quarter, blaming a memory-driven PC slump, and its shares fell 28.6% the next day, their worst day since at least 1980.',
@@ -630,6 +651,7 @@ export const ARTICLES = [
   {
     slug: 'amazon-q3-2026-results',
     title: 'Amazon’s third-quarter 2026 results, explained',
+    searchTitle: 'Amazon Q3 2026 earnings: AWS up 39%, a $42 billion outflow',
     question: 'How did Amazon post its best margin and a $42 billion cash outflow?',
     answer:
       'Amazon’s third-quarter revenue rose 12% to $201.9 billion, AWS grew 39%, its fastest in nearly five years, and its operating margin was its highest ever. But it spent $77.3 billion on property and equipment, its free cash flow over the past year was an outflow of $42.4 billion, and its shares fell 1.4% the next day.',
@@ -662,6 +684,7 @@ export const ARTICLES = [
   {
     slug: 'sandisk-q1-fy27-results',
     title: 'Sandisk’s first-quarter fiscal 2027 results, explained',
+    searchTitle: 'Sandisk Q1 FY27 earnings: revenue up 378%, explained',
     question: 'How did Sandisk go from $112 million of profit to $8.1 billion in a year?',
     answer:
       'Sandisk’s revenue rose 378% to $11.0 billion in the three months to 2 October, its gross margin was 85.0%, and it made $8.1 billion of net income, against $112 million a year earlier. It also announced an 8-for-1 share split. The next day, its shares fell 13.5%, to $1,150.89, 50.7% below their June record close.',
@@ -694,6 +717,7 @@ export const ARTICLES = [
   {
     slug: 'servicenow-q3-2026-results',
     title: 'ServiceNow’s third-quarter 2026 results, explained',
+    searchTitle: 'ServiceNow Q3 2026 earnings: why the shares fell 26.9%',
     question: 'Why did ServiceNow’s shares fall 26.9% after it beat its own forecast?',
     answer:
       'ServiceNow’s subscription revenue rose 21% to $3.99 billion in the third quarter of 2026, above the top of its own forecast, and it raised its targets for the year. But it forecast slower growth in the revenue it has under contract, and its shares fell 26.9% the next day, their worst day since it listed in 2012.',
@@ -726,6 +750,7 @@ export const ARTICLES = [
   {
     slug: 'nab-fy26-results',
     title: 'NAB’s full-year 2026 results, explained',
+    searchTitle: 'NAB 2026 results: cash earnings down 13.4%, shares down 5.4%',
     question: 'Why did NAB’s shares fall 5.4% on a day the ASX 200 rose 2.6%?',
     answer:
       'NAB’s cash earnings fell 13.4% to $6.14 billion in the year to September 2026, mostly because of a $1.35 billion software write-down. Without it, earnings were flat. But its charge for bad debts nearly doubled, and its shares fell 5.4% on results day, while the ASX 200 rose 2.6%.',
@@ -758,6 +783,7 @@ export const ARTICLES = [
   {
     slug: 'amd-q3-2026-results',
     title: 'AMD’s third-quarter 2026 results, explained',
+    searchTitle: 'AMD Q3 2026 earnings: why 80% growth barely moved the shares',
     question: 'Why did AMD’s shares barely move after it forecast 80% growth?',
     answer:
       'AMD’s revenue rose 45% to a record $13.4 billion in the third quarter of 2026, as its data centre sales nearly doubled, and it said it expects revenue to grow more than 80% in 2027. Its shares rose just 1.0% the next day, one of their quietest results days since 2016, after a 19.3% fall in the three sessions before.',
@@ -790,6 +816,7 @@ export const ARTICLES = [
   {
     slug: 'apple-q4-2026-results',
     title: 'Apple’s fourth-quarter 2026 results, explained',
+    searchTitle: 'Apple Q4 2026 earnings: a record forecast, yet shares fell',
     question: 'Why did Apple’s shares fall after it forecast its best quarter ever?',
     answer:
       'Apple’s revenue rose 12% to $114.5 billion in its September quarter, and it said the December quarter would be “the best quarter for revenue in the history of the company”. But it forecast a lower gross margin, blaming higher memory costs, and its shares fell 1.9% the next day, while the S&P 500 rose 0.4%.',
@@ -822,6 +849,7 @@ export const ARTICLES = [
   {
     slug: 'westpac-fy26-results',
     title: 'Westpac’s full-year 2026 results, explained',
+    searchTitle: 'Westpac 2026 results: bad debts doubled, yet shares rose',
     question: 'Why did Westpac’s shares rise after its bad-debt charge doubled?',
     answer:
       'Westpac’s profit was flat at $7.0 billion, excluding one-off items, in the year to September 2026, and its charge for bad debts doubled to $864 million. But one analyst said that charge was lower than he expected, and its shares rose 1.0% on results day, while the ASX 200 fell 0.6%.',
@@ -854,6 +882,7 @@ export const ARTICLES = [
   {
     slug: 'palantir-q3-2026-results',
     title: 'Palantir’s third-quarter 2026 results, explained',
+    searchTitle: 'Palantir Q3 2026 earnings: revenue up 96%, shares fell',
     question: 'Why did Palantir’s shares fall after its revenue nearly doubled?',
     answer:
       'Palantir’s revenue rose 96% to $2.31 billion in the third quarter of 2026, above analysts’ forecasts, and it raised its forecast for the year. But the value of the new contracts it signed grew just 6%, and its shares fell 1.6% the next day, the smallest move after any of its results since it listed.',
@@ -886,6 +915,7 @@ export const ARTICLES = [
   {
     slug: 'arm-q2-fy27-results',
     title: 'Arm’s results for the quarter to September 2026, explained',
+    searchTitle: 'Arm Q2 FY27 earnings: record revenue, shares down 13.1%',
     question: 'Why did Arm’s shares fall 13% after record revenue?',
     answer:
       'Arm’s revenue rose 27% to a record $1.44 billion in the quarter to September 2026, above analysts’ forecasts. But its royalties, the fee it earns on every chip made with its designs, grew just 8%, and its shares fell 13.1% the next day, a day the Nasdaq Composite fell 5.5%.',
@@ -918,6 +948,7 @@ export const ARTICLES = [
   {
     slug: 'astera-labs-q3-2026-results',
     title: 'Astera Labs’ third-quarter 2026 results, explained',
+    searchTitle: 'Astera Labs Q3 2026 earnings: revenue up 154%, shares fell',
     question: 'Why did Astera Labs’ shares fall after its revenue rose 154%?',
     answer:
       'Astera Labs’ revenue rose 154% to a record $584.9 million in the third quarter of 2026, above analysts’ forecasts, and it forecast $730 million to $750 million for the next quarter. But its shares fell 4.4% the next day, while the Nasdaq Composite rose 1.4%, and a further 19.6% the day after.',
@@ -950,6 +981,7 @@ export const ARTICLES = [
   {
     slug: 'novo-nordisk-q3-2026-results',
     title: 'Novo Nordisk’s third-quarter 2026 results, explained',
+    searchTitle: 'Novo Nordisk Q3 2026 results: outlook raised, shares up 5%',
     question: 'Why did Novo Nordisk raise its outlook again?',
     answer:
       'Novo Nordisk’s sales rose 4% at constant exchange rates in the third quarter of 2026, to DKK 79.2 billion, and its new Wegovy pill sold DKK 5.4 billion. It raised its outlook for the year, and its US-listed shares rose 5.0% on results day, though they remain about 70% below their 2024 record.',
@@ -982,6 +1014,7 @@ export const ARTICLES = [
   {
     slug: 'xero-h1-fy27-results',
     title: 'Xero’s half-year 2026 results, explained',
+    searchTitle: 'Xero H1 FY27 results: revenue up 46%, profit down 86%',
     question: 'Why did Xero’s profit fall 86% when its revenue rose 46%?',
     answer:
       'Xero’s revenue rose 46% to NZ$1.75 billion in the six months to September 2026, but its net profit fell 86% to NZ$18.5 million, mainly because of Melio, the US business it bought. Its shares rose 6.1% on results day, when it also announced a buy-back of up to A$1 billion, and are still 61.3% below their record.',
@@ -1014,6 +1047,7 @@ export const ARTICLES = [
   {
     slug: 'life360-q3-2026-results',
     title: 'Life360’s third-quarter 2026 results, explained',
+    searchTitle: 'Life360 Q3 2026 earnings: revenue up 40%, shares down 15.3%',
     question: 'Why did Life360’s shares fall 15.3% when its revenue rose 40%?',
     answer:
       'Life360’s revenue rose 40% to US$174.1 million in the September 2026 quarter, and it added a record 188,000 Paying Circles for a third quarter. But it cut the top of its advertising forecast and warned US price rises would slow sign-ups, and its ASX shares fell 15.3% on results day, their fifth such fall in a row.',
@@ -1078,6 +1112,7 @@ export const ARTICLES = [
   {
     slug: 'coca-cola-q3-2026-results',
     title: 'Coca-Cola’s third-quarter 2026 results, explained',
+    searchTitle: 'Coca-Cola Q3 2026 earnings: volume up 5%, shares down 1.6%',
     question: 'Why did Coca-Cola’s shares fall after it raised its forecast for the third time?',
     answer:
       'Coca-Cola’s revenue rose 7% to $13.4 billion in the third quarter of 2026, above analysts’ forecasts, and it raised its forecast for the year for the third time. Its shares still fell 1.6% on results day, which CNBC linked to a gloomy view of the consumer, but on 28 October they were up 31.2% this year.',
@@ -1110,6 +1145,7 @@ export const ARTICLES = [
   {
     slug: 'mcdonalds-q3-2026-results',
     title: 'McDonald’s third-quarter 2026 results, explained',
+    searchTitle: 'McDonald’s Q3 2026 earnings: US sales fell, shares rose 6.5%',
     question: 'Why did McDonald’s shares rise 6.5% when its US sales fell?',
     answer:
       'McDonald’s US sales fell 0.2% in the third quarter of 2026, less than analysts expected, and it said they turned positive in September. Its earnings per share rose 10%, and its shares rose 6.5% on results day, their biggest results-day rise in ten years, though they were still 18.5% below their February record.',
@@ -1142,6 +1178,7 @@ export const ARTICLES = [
   {
     slug: 'applied-materials-q4-fy26-results',
     title: 'Applied Materials’ fourth-quarter 2026 results, explained',
+    searchTitle: 'Applied Materials Q4 FY26 earnings: why the shares fell',
     question: 'Why did Applied Materials’ shares fall after its revenue rose 53%?',
     answer:
       'Applied Materials’ revenue rose 53% to a record $10.41 billion in the quarter to October 2026, above analysts’ forecasts, and it expects 58% growth in the next quarter. Its shares still fell 2.7% the next day, leaving them 48.8% below their June record, though up 44.2% this year.',
@@ -1174,6 +1211,7 @@ export const ARTICLES = [
   {
     slug: 'cisco-q1-fy27-results',
     title: 'Cisco’s results for the quarter to October 2026, explained',
+    searchTitle: 'Cisco Q1 FY27 earnings: revenue up 24%, shares down 6.2%',
     question: 'Why did Cisco’s shares fall 6.2% after its fastest growth in 15 years?',
     answer:
       'Cisco’s revenue rose 24% to a record $18.5 billion in the quarter to October 2026, its fastest growth in more than 15 years, and it raised its forecast for the year. But its orders grew more slowly than the quarter before and its margin fell, and its shares fell 6.2% the next day.',
@@ -1206,6 +1244,7 @@ export const ARTICLES = [
   {
     slug: 'nebius-q3-2026-results',
     title: 'Nebius’s third-quarter 2026 results, explained',
+    searchTitle: 'Nebius Q3 2026 earnings: revenue up 571%, shares down 16.8%',
     question: 'Why did Nebius’s shares fall 16.8% when its revenue rose 571%?',
     answer:
       'Nebius’s revenue rose 571% to $980.8 million in the third quarter of 2026, above analysts’ forecasts, but about a third of it will not repeat, and it said some new capacity would arrive months late. Its shares fell 16.8% on results day, their biggest results-day fall since trading resumed in 2024.',
@@ -1238,6 +1277,7 @@ export const ARTICLES = [
   {
     slug: 'nvidia-q3-fy27-results',
     title: 'Nvidia’s results for the quarter to October 2026, explained',
+    searchTitle: 'Nvidia Q3 FY27 earnings: revenue doubled. Why shares fell',
     question: 'Why did Nvidia’s shares fall when its revenue doubled?',
     answer:
       'Nvidia’s revenue more than doubled to $115.8 billion in the quarter to October 2026, and it forecast $130 billion for the next. Its shares still fell 2.9% the next day, its first results since Jensen Huang resigned as chief executive, leaving them 36.9% below their October record.',
