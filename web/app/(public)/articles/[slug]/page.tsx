@@ -60,6 +60,7 @@ export async function generateMetadata({
   return pageMetadata({
     path: articlePath(article.slug),
     title: article.title,
+    searchTitle: article.searchTitle,
     // The summary, not the answer. This is the sentence under the blue link in a
     // search result; the answer is what the reader gets by clicking.
     description: article.summary,

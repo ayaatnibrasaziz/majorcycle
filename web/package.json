@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/build-tor-exits.mjs && node scripts/build-report-bundle.mjs && next build",
     "build:report-bundle": "node scripts/build-report-bundle.mjs",
+    "indexnow": "node scripts/indexnow.mjs",
     "check:report-sections": "node scripts/check-report-sections.mjs",
     "check:entitlement-gates": "node scripts/check-entitlement-gates.mjs",
     "check:data-integrity": "node scripts/check-data-integrity.mjs",

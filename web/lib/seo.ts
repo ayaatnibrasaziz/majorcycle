@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ARTICLES, articlePath } from '@/lib/articles';
+import { INDEXNOW_KEY_PATH } from '@/lib/indexnow';
 import { LEARN_ARTICLES, learnPath } from '@/lib/learn';
 import { SITE_ORIGIN } from '@/lib/url';
 
@@ -193,6 +194,9 @@ export const PUBLIC_ENDPOINTS: readonly string[] = [
   // site did until Layer G G1 (verified 2026-08-06).
   '/robots.txt',
   '/sitemap.xml',
+  // The IndexNow key file (lib/indexnow.ts). Bing fetches it signed out; bounced to
+  // /login, every submission would be rejected and nothing would say so.
+  INDEXNOW_KEY_PATH,
   // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt.
   '/.well-known',
   // Cron endpoints run without a user session (Vercel Cron sends a Bearer secret,
@@ -252,6 +256,12 @@ export function pageMetadata(opts: {
    * so a third one gets it for free (11c-iv).
    */
   article?: { readonly published: string; readonly modified: string };
+  /**
+   * A title for search results and share cards that replaces `title` there and is
+   * shown exactly as written — no " | MajorCycle". Articles only (SEO audit
+   * 2026-11-19); `title` stays the page's own heading.
+   */
+  searchTitle?: string;
 }): Metadata {
   const page = BY_PATH.get(opts.path);
   if (!page) {
@@ -270,10 +280,11 @@ export function pageMetadata(opts: {
   // also reaches og:title is a framework detail I am not willing to depend on — an
   // untitled-looking share card is exactly the kind of thing nobody notices for
   // months. Stated in full here, and asserted on the rendered HTML by e2e/seo.spec.ts.
-  const fullTitle = `${opts.title} | MajorCycle`;
+  const fullTitle = opts.searchTitle ?? `${opts.title} | MajorCycle`;
 
   return {
-    title: opts.title,
+    // `absolute` skips the root layout's '%s | MajorCycle' template.
+    title: opts.searchTitle ? { absolute: opts.searchTitle } : opts.title,
     description: opts.description,
     alternates: { canonical: url },
     // Crawlable-but-noindex. Stated per page rather than via a robots.txt block,
