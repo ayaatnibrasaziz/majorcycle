@@ -47,7 +47,7 @@ PARAMS = CycleParams(
     lookback_bars=int(P["lookback_bars"]),
 )
 
-PRE_MARKET = {"LLY", "NAB.AX", "WBC.AX", "NVO", "XRO.AX", "360.AX"}
+PRE_MARKET = {"LLY", "KO", "MCD", "NAB.AX", "WBC.AX", "NVO", "XRO.AX", "360.AX"}
 
 #: Companies that file no 8-K (ASX-listed): results days from the ASX announcements list, saved in
 #: reference/nab-2026-fy/sources/asx-ann-<year>.html (each Appendix 4D/4E, all lodged ~8am, before the open).
@@ -87,12 +87,17 @@ RELEASES = {
 #: Single releases made BEFORE the open by an after-close reporter (reaction = that day's close vs the day before).
 #: AMD 2020-10-27: filed 06:34 ET with the Xilinx acquisition announcement.
 #: PLTR: from Feb 2021 to Nov 2023 it filed around 07:00 ET (11:00-12:10 UTC), before the open (EDGAR acceptance times).
-PRE_MARKET_DAYS = {"AMD": {"2020-10-27"},
+#: PANW 2018-06-04 and 2020-11-16: results releases (Item 2.02) accepted 07:36 and 07:02 ET, before the open.
+PRE_MARKET_DAYS = {"AMD": {"2020-10-27"}, "PANW": {"2018-06-04", "2020-11-16"},
                    "PLTR": {"2021-02-16", "2021-05-11", "2021-08-12", "2021-11-09", "2022-02-17", "2022-05-09",
                             "2022-08-08", "2022-11-07", "2023-11-02"}}
 
+#: Single releases made AFTER the close by a before-the-open reporter (reaction = the next close vs that day's).
+#: MCD 2026-02-11: filed 16:02 ET, results call at 3:30pm Central the same day.
+AFTER_CLOSE_DAYS = {"MCD": {"2026-02-11"}}
+
 #: The benchmark per market (US default).
-INDICES = {"NAB.AX": ["^AXJO"], "WBC.AX": ["^AXJO"], "XRO.AX": ["^AXJO"], "360.AX": ["^AXJO"]}
+INDICES = {"KO": ["^GSPC"], "MCD": ["^GSPC"], "NAB.AX": ["^AXJO"], "WBC.AX": ["^AXJO"], "XRO.AX": ["^AXJO"], "360.AX": ["^AXJO"]}
 
 #: Item 2.02 filings that are not a quarterly results release.
 DROP = {
@@ -101,7 +106,11 @@ DROP = {
     "NOW": {"2016-04-13": "litigation settlement charges, not a quarterly release"},
     "AMD": {"2018-02-27": "ASC 606 recast of earlier results, not a quarterly release",
             "2022-10-06": "preliminary third-quarter revenue, before the 2022-11-01 release"},
+    "MCD": {"2020-04-08": "COVID-19 update with first-quarter comparable sales, before the 2020-04-30 release",
+            "2020-10-08": "third-quarter comparable sales, before the 2020-11-09 release"},
     "AAPL": {"2019-01-02": "letter cutting the December-quarter revenue forecast, before the 2019-01-29 release"},
+    "NVDA": {"2019-01-28": "fourth-quarter revenue warning (filed 09:04 ET), before the 2019-02-14 release",
+             "2022-08-08": "preliminary second-quarter revenue (filed 09:16 ET), before the 2022-08-24 release"},
     "NAB.AX": {"2020-04-27": "trading halt all day (capital raising announced with the results); no reaction to measure"},
     "LLY": {
         "2017-12-13": "annual guidance", "2018-12-19": "annual guidance", "2019-12-17": "annual guidance",
@@ -111,7 +120,7 @@ DROP = {
 }
 
 #: The size of fall listed. Owner's rule (23 Oct 2026): the threshold that leaves 5-10 falls.
-FALL_THRESHOLD = {"360.AX": -15, "XRO.AX": -20, "NVO": -40, "ARM": -20, "ALAB": -20, "PLTR": -20, "WBC.AX": -25, "AAPL": -40, "AMD": -50, "NAB.AX": -30, "MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
+FALL_THRESHOLD = {"NVDA": -50, "PANW": -30, "KO": -30, "CSCO": -25, "AMAT": -55, "MCD": -30, "360.AX": -15, "XRO.AX": -20, "NVO": -40, "ARM": -20, "ALAB": -20, "PLTR": -20, "WBC.AX": -25, "AAPL": -40, "AMD": -50, "NAB.AX": -30, "MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
 
 
 def load() -> dict[str, Any]:
@@ -147,7 +156,7 @@ def reactions(t: str, rows: list[list[Any]]) -> list[dict[str, Any]]:
         if d not in close:
             continue  # before the first stored bar (SNDK) or a non-trading day
         i = dates.index(d)
-        if t in PRE_MARKET or d in PRE_MARKET_DAYS.get(t, set()):
+        if (t in PRE_MARKET or d in PRE_MARKET_DAYS.get(t, set())) and d not in AFTER_CLOSE_DAYS.get(t, set()):
             before, after = dates[i - 1], d
         else:
             if i + 1 >= len(dates):

@@ -8712,6 +8712,1734 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'coca-cola-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Coca-Cola, which sells the concentrate for its drinks to bottlers around the world and
+        owns some bottlers itself, reported its results for the three months to 2 October 2026
+        before the market opened on 27 October. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $13,380 million, up 7% from $12,455 million a year earlier.
+        </li>
+        <li>
+          <strong>Volume:</strong> the number of drinks it sold, measured in unit cases, up 5%,
+          the same as the quarter before.
+        </li>
+        <li>
+          <strong>Profit:</strong> earnings per share of $0.93, up 8%. On Coca-Cola’s own
+          adjusted measure, which it calls comparable earnings per share, $0.91, up 11%.
+        </li>
+        <li>
+          <strong>North America:</strong> volume flat, which finance chief John Murphy put down
+          to the timing of the Fourth of July and a shortage of Topo Chico, the sparkling water
+          Coca-Cola owns, CNBC reported.
+        </li>
+        <li>
+          <strong>The forecast:</strong> comparable earnings per share now expected to grow at
+          least 11% in 2026, up from 9% to 10%. It started the year at 7% to 8%.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 1.6% on 27 October, to $91.18, while the S&P 500
+          rose 0.6%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$13,380M', c2: '$12,455M', c3: '+7%' } },
+          { cells: { c0: 'Operating income', c1: '$4,465M', c2: '$3,982M', c3: '+12%' } },
+          { cells: { c0: 'Net income', c1: '$4,009M', c2: '$3,696M', c3: '+8%' } },
+          { cells: { c0: 'Earnings per share', c1: '$0.93', c2: '$0.86', c3: '+8%' } },
+          { cells: { c0: 'Comparable earnings per share', c1: '$0.91', c2: '$0.82', c3: '+11%' } },
+        ]}
+      />
+      <p>
+        Its operating margin, operating income as a share of revenue, rose from 32.0% to 33.4%.
+        Coca-Cola said currency movements added 2 points to the growth in earnings per share.
+      </p>
+      <p>
+        Comparable earnings per share leave out items Coca-Cola treats as one-offs. This
+        quarter’s reported figure included a tax benefit worth $0.04 a share and other costs
+        worth $0.02, so the comparable figure is the lower one.
+      </p>
+
+      <h2>Where the growth came from</h2>
+      <p>
+        Coca-Cola reports by region. Organic revenue leaves out currency movements and
+        businesses bought or sold, so it shows the growth of the business it already had.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the growth came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '28%' },
+          { key: 'c1', label: 'Revenue', numeric: true, width: '18%' },
+          { key: 'c2', label: 'Reported change', numeric: true, width: '18%' },
+          { key: 'c3', label: 'Organic change', numeric: true, width: '18%' },
+          { key: 'c4', label: 'Volume change', numeric: true, width: '18%' },
+        ]}
+        rows={[
+          { cells: { c0: 'North America', c1: '$5,386M', c2: '+3%', c3: '+3%', c4: '0%' } },
+          { cells: { c0: 'Europe, Middle East & Africa', c1: '$3,104M', c2: '+4%', c3: '+7%', c4: '+5%' } },
+          { cells: { c0: 'Latin America', c1: '$1,958M', c2: '+25%', c3: '+16%', c4: '+6%' } },
+          { cells: { c0: 'Asia Pacific', c1: '$1,563M', c2: '+4%', c3: '+6%', c4: '+6%' } },
+          { cells: { c0: 'Bottling investments', c1: '$1,523M', c2: '+13%', c3: '+12%', c4: '+8%' } },
+        ]}
+      />
+      <p>
+        Volume growth was led by India, China, Mexico and Brazil, Coca-Cola said. Coca-Cola Zero
+        Sugar grew 16% and Diet Coke 6%. Its sports drinks fell 3%.
+      </p>
+      <p>
+        Higher prices added 4 points to revenue, Murphy said on the results call, but a less
+        favourable mix, mainly of countries, the timing of investments and the kinds of drinks
+        sold, took 3 points off. So price and mix together added just 1%.
+      </p>
+
+      <h2>What concentrate sales are, and why they matter</h2>
+      <p>
+        Coca-Cola sells concentrate to bottlers, which turn it into the drinks people buy. Its
+        concentrate sales grew 7%, 2 points faster than the volume of drinks sold, because of
+        “the timing of concentrate shipments”, it said. In other words, it shipped more
+        concentrate than the drinks sold in the quarter used.
+      </p>
+      <p>
+        That is expected to reverse. Murphy said Coca-Cola now expects “slight destocking” in
+        the fourth quarter, when bottlers use up that stock, and the quarter also has six fewer
+        days than a year earlier. So it expects concentrate shipments to grow a little more
+        slowly than volume over the whole year.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts surveyed by LSEG had expected comparable earnings per share of 88 cents and
+        revenue of $12.92 billion, CNBC reported. Coca-Cola reported 91 cents and $13.4 billion.
+      </p>
+
+      <h2>The forecast, raised for the third time</h2>
+      <p>
+        Coca-Cola gives its forecast as growth on $3.00, its comparable earnings per share for
+        2025. It has raised it with every set of results this year:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The forecast, raised for the third time"
+        columns={[
+          { key: 'c0', label: 'Forecast given in', width: '40%' },
+          { key: 'c1', label: 'Comparable earnings per share growth', width: '30%' },
+          { key: 'c2', label: 'Organic revenue growth', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'February', c1: '7% to 8%', c2: '4% to 5%' } },
+          { cells: { c0: 'April', c1: '8% to 9%', c2: '4% to 5%' } },
+          { cells: { c0: 'July', c1: '9% to 10%', c2: 'About 5%' } },
+          { cells: { c0: 'October', c1: 'At least 11%', c2: 'At least 5%' } },
+        ]}
+      />
+      <p>
+        Growth of at least 11% on $3.00 would be comparable earnings per share of at least $3.33
+        for 2026. Coca-Cola also raised its free cash flow forecast for the year, the cash it
+        generates after spending on equipment, to at least $13.0 billion, from about $12.4
+        billion.
+      </p>
+      <p>
+        About 3 points of that 11% is expected to come from currency movements, Coca-Cola said.
+        Leaving out currency and the businesses it has bought and sold, it expects growth of at
+        least 9%, up from 7% to 8%.
+      </p>
+
+      <h2>Next year: selling the African bottler</h2>
+      <p>
+        Coca-Cola is selling its bottling business in Africa, which it expects to complete in
+        the fourth quarter, subject to regulatory approval. Because a bottler’s revenue is large
+        compared with its profit, the sale will shrink Coca-Cola’s revenue far more than its
+        earnings. For 2027, it expects the sale to take about 8 points off its comparable
+        revenue growth and about 2 points off comparable earnings per share.
+      </p>
+      <p>
+        Murphy said Coca-Cola is also “exploring a potential IPO of our bottling operations in
+        India”. It will give its forecast for 2027 when it reports fourth-quarter results.
+      </p>
+
+      <h2>The tax case worth $6 billion</h2>
+      <p>
+        Coca-Cola has been fighting the US Internal Revenue Service in court since 2015 over how
+        much of the income of its foreign licensees should be taxed in the US. The US Tax Court
+        sided mainly with the IRS, and in September 2024 Coca-Cola paid $6.0 billion of tax and
+        interest for 2007 to 2009 while it appeals. It would get some or all of that back, with
+        interest, if it wins.
+      </p>
+      <p>
+        The appeals court heard the case on 25 June 2026. Coca-Cola says it is “more likely than
+        not” to win. If it lost, it would not get the $6.0 billion back, and it estimates the
+        further tax and interest for 2010 to 2025 at about $14 billion as of the end of 2025. It
+        also estimates that losing would raise its tax rate each year by about 3.8%.
+      </p>
+      <p>
+        On the results call, Murphy said Coca-Cola was “continuing to judiciously manage our
+        balance sheet” while it waited for the decision.
+      </p>
+
+      <h2>Cash and the dividend</h2>
+      <p>
+        Coca-Cola generated $11.4 billion of free cash flow in the first nine months of 2026.
+        Its net debt was 1.3 times its earnings before interest, tax, depreciation and
+        amortisation, Murphy said, below its target of 2 to 2.5 times.
+      </p>
+      <p>
+        It has paid a dividend of $0.53 a share each quarter this year. Its board declared the
+        same again in October, payable on 15 December, a rate of $2.12 a year, 2.3% of the share
+        price on 28 October.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Coca-Cola shares set a record close of $95.34 on 22 October, five days before the
+        results. They closed at $92.70 on 26 October, and on results day, 27 October, they fell
+        1.6% to $91.18. The S&P 500 rose 0.6% the same day.
+      </p>
+      <p>
+        CNBC reported that the shares fell “on its gloomy forecast for the consumer
+        environment”. Murphy said Coca-Cola expected consumer behaviour in 2027 “to remain
+        largely unchanged, with value being a very important consideration across all markets
+        and income groups”, and that the restaurant industry was “under pressure”.
+      </p>
+      <p>
+        On 28 October the shares closed at $91.73, 3.8% below their record and up 31.2% since
+        the end of 2025. Counting dividends, they were up 33.8%. If 2026 ended there, it would
+        be Coca-Cola’s best year since 1996.
+      </p>
+
+      <h2>How Coca-Cola shares usually react to results</h2>
+      <p>
+        We measured all 43 of Coca-Cola’s results releases before this one, from February 2016
+        to July 2026. Coca-Cola reports before the market opens, so we compared the close on the
+        day it reported with the close the day before.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>1.7%</strong>.
+        </li>
+        <li>
+          Only 2 of the 43 moved the shares by 5% or more, and none by 10%.
+        </li>
+        <li>
+          The largest fall was <strong>8.4%</strong> in February 2019.
+        </li>
+        <li>
+          The largest rise was <strong>6.1%</strong> in July 2019.
+        </li>
+        <li>
+          The shares rose after 26 of the 43 and fell after 17.
+        </li>
+        <li>
+          The two results before this one sent the shares up <strong>3.9%</strong> in April and{' '}
+          <strong>5.0%</strong> in July 2026.
+        </li>
+      </ul>
+      <p>
+        So a 1.6% fall is an ordinary move for Coca-Cola: 23 of the 43 earlier results moved the
+        shares more.
+      </p>
+
+      <h2>How far Coca-Cola has fallen before</h2>
+      <p>
+        Counting dividends, Coca-Cola has fallen 30% or more four times since 1962, the start of
+        our price history. These are measured from a record close to the lowest close before the
+        shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Coca-Cola has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'March 1973', c1: 'October 1974', c2: '−68.2%', c3: 'November 1982' } },
+          { cells: { c0: 'August 1987', c1: 'October 1987', c2: '−41.2%', c3: 'March 1989' } },
+          { cells: { c0: 'July 1998', c1: 'March 2003', c2: '−55.0%', c3: 'March 2011' } },
+          { cells: { c0: 'February 2020', c1: 'March 2020', c2: '−37.0%', c3: 'July 2021' } },
+        ]}
+      />
+      <p>
+        All four got back to their record. The longest took more than 12 years from the record,
+        and about eight years from the low. That is a record of what happened, not a guide to
+        what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether comparable earnings per share grow at least 11%
+          in 2026, with six fewer days and some destocking in the fourth quarter.
+        </li>
+        <li>
+          <strong>Africa.</strong> Whether the sale of the African bottler closes in the fourth
+          quarter, as Coca-Cola assumes.
+        </li>
+        <li>
+          <strong>The tax case.</strong> The appeals court’s decision, which Coca-Cola is still
+          waiting for.
+        </li>
+        <li>
+          <strong>2027.</strong> Coca-Cola’s first forecast for next year, with its
+          fourth-quarter results.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Coca-Cola’s own, or analysts’ as
+        reported, not ours. The share-price history is a record of what happened before, not a
+        prediction. This article is general information and does not take into account your
+        objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'mcdonalds-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        McDonald’s, which owns or franchises more than 45,000 restaurants in more than 100
+        countries, reported its results for the three months to 30 September 2026 before the
+        market opened on 4 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Sales at its restaurants:</strong> systemwide sales, at every McDonald’s
+          whether it owns it or a franchisee does, of more than $38 billion, up 4%.
+        </li>
+        <li>
+          <strong>Comparable sales:</strong> sales at restaurants open at least 13 months, up
+          1.5% worldwide but down 0.2% in the US, where fewer customers came in.
+        </li>
+        <li>
+          <strong>Revenue:</strong> $7,157 million, up just 1%, because McDonald’s is selling
+          restaurants to franchisees.
+        </li>
+        <li>
+          <strong>Profit:</strong> earnings per share of $3.51, up 10%, or $3.57 leaving out
+          restructuring charges.
+        </li>
+        <li>
+          <strong>The plan:</strong> a test of new low-priced meal bundles in about 1,900 US
+          restaurants, with a national launch planned for early 2027.
+        </li>
+        <li>
+          <strong>The dividend:</strong> raised 4% to $1.93 a share each quarter.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 6.5% on 4 November, to $280.22, while the S&P 500 rose
+          1.6%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$7,157M', c2: '$7,078M', c3: '+1%' } },
+          { cells: { c0: 'Operating income', c1: '$3,595M', c2: '$3,357M', c3: '+7%' } },
+          { cells: { c0: 'Net income', c1: '$2,486M', c2: '$2,278M', c3: '+9%' } },
+          { cells: { c0: 'Earnings per share', c1: '$3.51', c2: '$3.18', c3: '+10%' } },
+          { cells: { c0: 'Leaving out charges', c1: '$3.57', c2: '$3.22', c3: '+11%' } },
+        ]}
+      />
+      <p>
+        The charges were mainly restructuring costs from an internal reorganisation McDonald’s
+        calls Accelerating the Organization: $56 million before tax this quarter, or $0.06 a
+        share, against $39 million a year earlier.
+      </p>
+
+      <h2>Why revenue grew 1% when sales grew 4%</h2>
+      <p>
+        About 95% of McDonald’s restaurants are run by franchisees, who pay it rent and
+        royalties. When McDonald’s runs a restaurant itself, it counts everything the restaurant
+        sells as revenue. When it sells that restaurant to a franchisee, it counts only the rent
+        and royalties. So selling restaurants shrinks revenue even when the restaurants sell
+        more.
+      </p>
+      <p>
+        That is what happened this quarter:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Why revenue grew 1% when sales grew 4%"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'From franchised restaurants', c1: '$4,487M', c2: '$4,363M', c3: '+3%' } },
+          { cells: { c0: 'Sales at its own restaurants', c1: '$2,480M', c2: '$2,563M', c3: '−3%' } },
+          { cells: { c0: 'Other revenue', c1: '$189M', c2: '$151M', c3: '+26%' } },
+        ]}
+      />
+      <p>
+        Chief financial officer Ian Borden said McDonald’s had sold about 175 restaurants to
+        franchisees in the US and its larger international markets so far this year, and that it
+        aims to have 98% of its restaurants franchised by the end of 2028.
+      </p>
+      <p>
+        Selling restaurants also brings in gains, which McDonald’s counts in operating income.
+        Its gains on selling restaurants rose from $35 million to $97 million, so $62 million of
+        the $239 million rise in operating income came from them.
+      </p>
+
+      <h2>The US: fewer customers</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The US: fewer customers"
+        columns={[
+          { key: 'c0', label: 'Comparable sales', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Apr–Jun 2026', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Jul–Sep 2025', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'United States', c1: '−0.2%', c2: '+0.8%', c3: '+2.4%' } },
+          { cells: { c0: 'Large international markets', c1: '+1.4%', c2: '+1.5%', c3: '+4.3%' } },
+          { cells: { c0: 'Other international markets', c1: '+4.2%', c2: '+1.9%', c3: '+4.7%' } },
+          { cells: { c0: 'All restaurants', c1: '+1.5%', c2: '+1.3%', c3: '+3.6%' } },
+        ]}
+      />
+      <p>
+        In the US, McDonald’s said, fewer customers were largely offset by each spending more.
+        It was the first fall in US comparable sales since early 2025, Restaurant Business
+        reported. It was also not a surprise: at its Investor Day in September, Borden had said
+        he expected the US to be “slightly negative” for the quarter after a slower start,
+        Restaurant Business reported.
+      </p>
+      <p>
+        Chairman and chief executive Chris Kempczinski said US sales fell slightly in July and
+        August and turned positive in September, after McDonald’s brought back some offers in
+        its app and moved its advertising towards its value meals. Borden gave examples of the
+        app offers: a $2 breakfast sandwich, and free fries with a $1 purchase. Kempczinski said
+        he was encouraged by “our baseline traffic trends in September and October”.
+      </p>
+      <p>
+        The large international markets, led by Australia and Germany, grew 1.4%, held back by
+        France. Japan led the other international markets, and China was weaker.
+      </p>
+
+      <h2>The value plan</h2>
+      <p>
+        Kempczinski said low entry prices were “the last piece of the value equation for us that
+        we need to figure out”. Late in October McDonald’s began an eight-week test of two kinds
+        of bundle, one where customers mix and match and one with a set combination, in about
+        1,900 US restaurants. Franchisees running about 4,000 more have started similar bundles
+        without waiting for the result, so together more than 40% of US restaurants are offering
+        one.
+      </p>
+      <p>
+        McDonald’s will choose between them on what customers prefer, what works in the kitchen
+        and what makes money for franchisees, and aims to launch one nationally in early 2027.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts surveyed by LSEG had expected earnings per share of $3.38, leaving out charges,
+        and revenue of $7.29 billion, CNBC reported. McDonald’s reported $3.57 and $7,157
+        million: more profit, less revenue.
+      </p>
+      <p>
+        On sales, analysts surveyed by StreetAccount had expected US comparable sales to fall
+        0.5%, CNBC reported, and worldwide comparable sales to rise 1.3%. Both came in better.
+      </p>
+
+      <h2>The plan McDonald’s set out in September</h2>
+      <p>
+        At its Investor Day on 23 September, McDonald’s set out a strategy it calls NEXT,
+        including remodelled restaurants, new drinks and chicken, and new targets for 2030. To
+        help franchisees pay for the changes, it said it would provide about $8.5 billion of
+        support through 2036, about $5 billion of it by 2030, as rent relief and capital.
+      </p>
+      <p>
+        Its main 2030 targets:
+      </p>
+      <ul>
+        <li>
+          an operating margin in the “low-to-mid 50% range”, against 47.6% so far in 2026;
+        </li>
+        <li>
+          1.5 percentage points more of the chicken and drinks markets;
+        </li>
+        <li>
+          about 250 basis points of gains in the efficiency of its restaurants, which it says is
+          about $100,000 of cash a year for the average US restaurant.
+        </li>
+      </ul>
+      <p>
+        The shares fell 4.8% that day.
+      </p>
+
+      <h2>The forecast for 2026</h2>
+      <p>
+        McDonald’s does not give a forecast for its earnings per share. For 2026 it expects:
+      </p>
+      <ul>
+        <li>
+          new restaurants to add about 2.5% to systemwide sales growth, leaving out currency
+          movements;
+        </li>
+        <li>
+          an operating margin in the “mid-to-high 40% range”;
+        </li>
+        <li>
+          capital spending of about $3.7 billion;
+        </li>
+        <li>
+          about 2,500 new restaurants worldwide, Borden said, a little below its target of
+          2,600, and about 2,100 more restaurants in total once closures are counted.
+        </li>
+      </ul>
+
+      <h2>The dividend</h2>
+      <p>
+        McDonald’s raised its quarterly dividend 4% to $1.93 a share. That is $7.72 a year, 2.8%
+        of the share price on 5 November. It also spent $1,770 million buying back its own
+        shares in the first nine months of 2026.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        McDonald’s closed at $263.04 on 3 November. On 4 November it was as low as $267.80 and
+        as high as $281.14, and closed at $280.22, up 6.5%. The S&P 500 rose 1.6% the same day.
+      </p>
+      <p>
+        CNBC reported the shares rose “as earnings beat” and US restaurants showed improvement.
+        It also reported that when an analyst asked, Borden “clarified that he did not say that
+        U.S. same-store sales would be better in the fourth quarter”.
+      </p>
+      <p>
+        On 5 November the S&P 500 fell 4.4% and McDonald’s only 0.8%, to $278.04. That leaves
+        the shares 18.5% below their record close of $341.06, set on 27 February 2026, and down
+        9.0% this year. From the record to their lowest close since, $230.88 on 7 October, they
+        fell 32.3%; they have since risen 20.4% from that low.
+      </p>
+
+      <h2>How McDonald’s shares usually react to results</h2>
+      <p>
+        We measured all 43 of McDonald’s quarterly results before this one, from January 2016 to
+        August 2026, leaving out two 2020 sales updates that were not full results. McDonald’s
+        usually reports before the market opens, so we compared the close on the day it reported
+        with the close the day before. It reported after the close once, in February 2026, and
+        for that one we used the next day.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>1.9%</strong>.
+        </li>
+        <li>
+          4 of the 43 moved the shares by 5% or more, and none by 10%.
+        </li>
+        <li>
+          The largest fall was <strong>5.0%</strong> in October 2019.
+        </li>
+        <li>
+          The largest rise was <strong>6.3%</strong> in October 2018.
+        </li>
+        <li>
+          The shares rose after 23 of the 43 and fell after 20.
+        </li>
+      </ul>
+      <p>
+        So this 6.5% rise was McDonald’s largest results-day move since at least 2016.
+      </p>
+
+      <h2>How far McDonald’s has fallen before</h2>
+      <p>
+        Counting dividends, McDonald’s has fallen 30% or more eight times since 1966, the start
+        of our price history, including this year. These are measured from a record close to the
+        lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far McDonald’s has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'July 1966', c1: 'October 1966', c2: '−45.7%', c3: 'January 1967' } },
+          { cells: { c0: 'May 1968', c1: 'July 1969', c2: '−77.4%', c3: 'January 1972' } },
+          { cells: { c0: 'December 1972', c1: 'October 1974', c2: '−72.3%', c3: 'November 1981' } },
+          { cells: { c0: 'August 1987', c1: 'October 1987', c2: '−40.2%', c3: 'May 1989' } },
+          { cells: { c0: 'July 1990', c1: 'October 1990', c2: '−33.6%', c3: 'December 1991' } },
+          { cells: { c0: 'November 1999', c1: 'March 2003', c2: '−73.6%', c3: 'December 2006' } },
+          { cells: { c0: 'September 2019', c1: 'March 2020', c2: '−36.9%', c3: 'September 2020' } },
+          { cells: { c0: 'February 2026', c1: 'October 2026', c2: '−31.0%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        Counting dividends, this year’s fall is 31.0%, smaller than the 32.3% in the share price
+        alone. The seven earlier falls all got back to their record; the longest took more than
+        eight years. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The US.</strong> Whether US comparable sales stay positive after September,
+          which McDonald’s has not promised.
+        </li>
+        <li>
+          <strong>Value.</strong> Which bundle wins the test, and how it does when it launches
+          nationally in early 2027.
+        </li>
+        <li>
+          <strong>NEXT.</strong> How many franchisees take up the remodels, and what they cost.
+        </li>
+        <li>
+          <strong>Selling restaurants.</strong> More gains and lower revenue as McDonald’s moves
+          towards 98% franchised.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Targets and expectations are McDonald’s own, or
+        analysts’ as reported, not ours. The share-price history is a record of what happened
+        before, not a prediction. This article is general information and does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'applied-materials-q4-fy26-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Applied Materials, which makes the machines used to make computer chips, reported its
+        results for the three months to 25 October 2026, the last quarter of its financial year,
+        after the market closed on 12 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $10,409 million, a record, up 53% from $6,800 million a year
+          earlier.
+        </li>
+        <li>
+          <strong>Chip-making machines:</strong> revenue of $7,996 million, up 64%, driven by
+          demand for chips for artificial intelligence.
+        </li>
+        <li>
+          <strong>Profit:</strong> earnings per share of $3.40, up 43%. On Applied’s own
+          adjusted measure, $4.16, up 92%.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue of $10.6 billion to $11.6 billion in the next
+          quarter, up 58% at the middle.
+        </li>
+        <li>
+          <strong>Next year:</strong> Applied expects spending on chip-making equipment across
+          the industry to rise more than 30% in 2027.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 2.7% on 13 November, to $370.50, after falling 3.6%
+          on 12 November before the results.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$10,409M', c2: '$6,800M', c3: '+53%' } },
+          { cells: { c0: 'Gross margin', c1: '50.4%', c2: '48.0%', c3: '+2.4 points' } },
+          { cells: { c0: 'Operating margin', c1: '35.1%', c2: '25.2%', c3: '+9.9 points' } },
+          { cells: { c0: 'Net income', c1: '$2,718M', c2: '$1,897M', c3: '+43%' } },
+          { cells: { c0: 'Earnings per share', c1: '$3.40', c2: '$2.38', c3: '+43%' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$4.16', c2: '$2.17', c3: '+92%' } },
+        ]}
+      />
+      <p>
+        For the full financial year, revenue rose 21% to a record $34,446 million, and earnings
+        per share rose 46% to $12.62. Chief executive Gary Dickerson called it Applied’s
+        “seventh consecutive year of growth”.
+      </p>
+
+      <h2>Why profit rose 43% on one measure and 92% on the other</h2>
+      <p>
+        The gap is mostly Applied’s investments in other companies, which it values at their
+        share prices. This quarter it recorded an unrealised loss of $653 million on them, which
+        counts against reported profit. A year earlier it had recorded a gain of $467 million,
+        which helped reported profit.
+      </p>
+      <p>
+        Applied’s adjusted measure leaves those out. So reported earnings per share grew from a
+        base flattered by a gain, to a figure held down by a loss, while the adjusted figure,
+        which leaves out both, rose 92%. Its investments include BE Semiconductor Industries, or
+        Besi, a maker of chip-assembly machines listed in Amsterdam. On 26 October Applied
+        agreed to raise its stake to about 20%.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Chip-making machines', c1: '$7,996M', c2: '$4,879M', c3: '+64%' } },
+          { cells: { c0: 'Services and parts', c1: '$1,896M', c2: '$1,506M', c3: '+26%' } },
+          { cells: { c0: 'Other, mainly display', c1: '$517M', c2: '$415M', c3: '+25%' } },
+        ]}
+      />
+      <p>
+        Of the chip-making machines, 58% went to makers of logic chips, 33% to makers of DRAM
+        memory and 9% to makers of flash memory. A year earlier the DRAM share was 28%. Finance
+        chief Brice Hill said Applied had record revenue in DRAM and in advanced packaging, the
+        technology that joins chips together.
+      </p>
+      <p>
+        By country, Taiwan was the largest customer at 28% of revenue, then China at 25%, down
+        from 29% a year earlier, then Korea at 17%. Hill said China would probably be “less than
+        25% of the business” in 2027.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts had expected adjusted earnings per share of $4.06 and revenue of $10.3 billion,
+        Trefis reported. Applied reported $4.16 and $10,409 million. Its own forecast in August
+        had been revenue of $9.75 billion to $10.75 billion and adjusted earnings per share of
+        $3.82 to $4.22.
+      </p>
+
+      <h2>The forecast</h2>
+      <p>
+        For the quarter to January 2027, Applied expects:
+      </p>
+      <ul>
+        <li>
+          revenue of $11.1 billion, give or take $500 million, which Hill said is up 58% at the
+          middle;
+        </li>
+        <li>
+          adjusted earnings per share of $4.35, give or take $0.20, which he said is up 83%;
+        </li>
+        <li>
+          revenue from chip-making machines of about $8.7 billion, up 69%, Hill said.
+        </li>
+      </ul>
+      <p>
+        Hill described it as a 14-week quarter, a week longer than usual.
+      </p>
+      <p>
+        Dickerson said Applied expects 2027 “to be another record year for the market and for
+        Applied”, with spending on chip-making equipment “up more than 30% year-over-year”. He
+        said the pace would depend on how quickly the industry can scale “all the way from clean
+        room construction to equipment components and raw material supply”.
+      </p>
+
+      <h2>Making more machines</h2>
+      <p>
+        Hill said Applied was “investing to be able to double our systems output from Q4 ’26
+        levels by 2028”. He said more than 10 new chip-factory projects had been added to
+        Applied’s tracker for the third quarter running, and that Applied was tracking “more
+        than 20 fab ramps and line expansions in 2027 alone”. Applied’s largest customers,
+        Dickerson said, now give it rolling forecasts eight quarters ahead.
+      </p>
+
+      <h2>Cash and buy-backs</h2>
+      <p>
+        Applied generated a record $3,300 million of cash from operations in the quarter. It
+        spent $2,000 million buying back its own shares, which Hill called “the largest
+        quarterly share buyback in over 8 years”, and $421 million on dividends.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Applied closed at $395.08 on 11 November. On 12 November, before the results came out,
+        it fell 3.6% to $380.95. On 13 November it opened at $376.01, fell as low as $352.23,
+        and closed at $370.50, down 2.7%. The S&P 500 fell 0.4% and the Nasdaq Composite 0.9%
+        the same day.
+      </p>
+      <p>
+        GuruFocus, writing on TradingView, said the reaction looked “tied to the wider chip
+        selloff” rather than to Applied’s numbers.
+      </p>
+      <p>
+        That leaves the shares 48.8% below their record close of $723.00 on 30 June 2026, though
+        still up 44.2% since the end of 2025. On 5 November they closed at $319.25, 55.8% below
+        the record.
+      </p>
+
+      <h2>How Applied shares usually react to results</h2>
+      <p>
+        We measured all 43 of Applied’s results releases before this one, from February 2016 to
+        August 2026. Applied reports after the market closes, so we compared the close on the
+        next day with the close on the day it reported.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.9%</strong>.
+        </li>
+        <li>
+          15 of the 43 moved the shares by 5% or more, and 2 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>14.1%</strong> in August 2025.
+        </li>
+        <li>
+          The largest rise was <strong>13.8%</strong> in May 2016.
+        </li>
+        <li>
+          The shares rose after 20 of the 43 and fell after 23.
+        </li>
+        <li>
+          The last results, in August 2026, sent the shares down <strong>5.1%</strong>.
+        </li>
+      </ul>
+      <p>
+        So a 2.7% fall is a small move for Applied: 26 of the 43 earlier results moved the
+        shares more.
+      </p>
+
+      <h2>How far Applied has fallen before</h2>
+      <p>
+        Counting dividends, Applied’s shares have fallen 55% or more nine times since 1980, the
+        start of our price history, including this year. These are measured from a record close
+        to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Applied has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'May 1981', c1: 'March 1982', c2: '−64.6%', c3: 'February 1983' } },
+          { cells: { c0: 'June 1983', c1: 'October 1986', c2: '−67.0%', c3: 'May 1987' } },
+          { cells: { c0: 'October 1987', c1: 'October 1987', c2: '−65.4%', c3: 'June 1988' } },
+          { cells: { c0: 'July 1990', c1: 'November 1990', c2: '−58.8%', c3: 'February 1992' } },
+          { cells: { c0: 'August 1995', c1: 'July 1996', c2: '−61.9%', c3: 'May 1997' } },
+          { cells: { c0: 'August 1997', c1: 'October 1998', c2: '−58.6%', c3: 'January 1999' } },
+          { cells: { c0: 'April 2000', c1: 'November 2008', c2: '−85.2%', c3: 'May 2017' } },
+          { cells: { c0: 'January 2022', c1: 'October 2022', c2: '−55.1%', c3: 'December 2023' } },
+          { cells: { c0: 'June 2026', c1: 'November 2026', c2: '−55.8%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The eight earlier falls all got back to their record. Six of them took less than two
+        years from the record; the one that began in 2000 took 17 years. That is a record of
+        what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the quarter to January lands within
+          $10.6 billion to $11.6 billion.
+        </li>
+        <li>
+          <strong>2027.</strong> Whether industry spending on chip-making equipment rises more
+          than 30%, as Applied expects.
+        </li>
+        <li>
+          <strong>Supply.</strong> Whether Applied and its suppliers can make machines fast
+          enough, and how quickly new chip factories are built.
+        </li>
+        <li>
+          <strong>China.</strong> Whether its share of revenue falls below 25% next year, as
+          Hill expects.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Applied’s own, or analysts’ as
+        reported, not ours. The share-price history is a record of what happened before, not a
+        prediction. This article is general information and does not take into account your
+        objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'cisco-q1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Cisco, which makes the networking equipment that connects computers, offices and data
+        centres, reported its results for the three months to 24 October 2026, the first quarter
+        of its financial year, after the market closed on 12 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $18,517 million, a record, up 24% from $14,883 million a
+          year earlier.
+        </li>
+        <li>
+          <strong>Networking:</strong> product revenue of $11,132 million, up 43%.
+        </li>
+        <li>
+          <strong>Profit:</strong> earnings per share of $1.14, up 58%. On Cisco’s own adjusted
+          measure, $1.40, up 40%.
+        </li>
+        <li>
+          <strong>Orders:</strong> product orders up 21%, slower than the 35% of the quarter
+          before.
+        </li>
+        <li>
+          <strong>Margin:</strong> gross margin down from 65.5% to 63.7%, which Cisco put down
+          to selling more hardware and higher memory costs.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue for the year to July 2027 of $74.8 billion to
+          $75.8 billion, up from $72.2 billion to $73.4 billion.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 6.2% on 13 November, to $95.64, while the S&P 500
+          fell 0.4%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$18,517M', c2: '$14,883M', c3: '+24%' } },
+          { cells: { c0: 'Gross margin', c1: '63.7%', c2: '65.5%', c3: '−1.8 points' } },
+          { cells: { c0: 'Operating income', c1: '$5,598M', c2: '$3,363M', c3: '+66%' } },
+          { cells: { c0: 'Net income', c1: '$4,552M', c2: '$2,860M', c3: '+59%' } },
+          { cells: { c0: 'Earnings per share', c1: '$1.14', c2: '$0.72', c3: '+58%' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$1.40', c2: '$1.00', c3: '+40%' } },
+        ]}
+      />
+      <p>
+        Chief executive Chuck Robbins said it was Cisco’s “strongest revenue and non-GAAP
+        earnings per share growth rates for Cisco in over 15 years”. Non-GAAP is Cisco’s
+        adjusted measure. It mainly leaves out the cost of the shares it pays its staff in,
+        $0.23 a share this quarter, and an accounting charge for the companies it has bought,
+        $0.10.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Networking', c1: '$11,132M', c2: '+43%' } },
+          { cells: { c0: 'Security', c1: '$2,120M', c2: '+7%' } },
+          { cells: { c0: 'Collaboration', c1: '$1,136M', c2: '+8%' } },
+          { cells: { c0: 'Observability', c1: '$279M', c2: '+2%' } },
+          { cells: { c0: 'All products', c1: '$14,667M', c2: '+32%' } },
+          { cells: { c0: 'Services', c1: '$3,850M', c2: '+1%' } },
+        ]}
+      />
+      <p>
+        Almost all the growth came from networking. Revenue from the Americas rose 28%, from
+        Europe, the Middle East and Africa 18%, and from Asia Pacific, Japan and China 21%.
+      </p>
+
+      <h2>The orders</h2>
+      <p>
+        Revenue is what Cisco delivered in the quarter. Orders are what customers asked for, so
+        they say more about what is coming. Product orders rose 21%, against 35% in the quarter
+        to July:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The orders"
+        columns={[
+          { key: 'c0', label: 'Orders, change on a year earlier', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'May–Jul 2026', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'All product orders', c1: '+21%', c2: '+35%' } },
+          { cells: { c0: 'Leaving out the largest cloud companies', c1: '+14%', c2: '+25%' } },
+          { cells: { c0: 'Networking', c1: '+28%', c2: '+40%' } },
+        ]}
+      />
+      <p>
+        Asked about a fall in orders for artificial intelligence equipment from the largest
+        cloud companies, which Cisco calls hyperscalers, compared with the quarter before,
+        Robbins said: “it’s going to be lumpy, and there’s going to be some quarters that are
+        going to be big, others that are going to be smaller.”
+      </p>
+
+      <h2>Why the margin fell</h2>
+      <p>
+        Cisco’s gross margin, the share of revenue left after the cost of making what it sells,
+        fell from 65.5% to 63.7%. In its quarterly report, Cisco said product gross margin fell
+        “primarily driven by a product mix shift toward hardware and higher memory costs”.
+        Hardware earns Cisco less per dollar of revenue than software and services, and the
+        price of the memory chips that go into its equipment has risen.
+      </p>
+      <p>
+        Cisco expects the mix to keep moving that way. Finance chief Mark Patterson said AI
+        equipment for the hyperscalers would be 12% of Cisco’s revenue in the year to July 2027,
+        up from 6%. He said he was comfortable with analysts’ expectations of a full-year
+        adjusted gross margin “just shy of the 65%”.
+      </p>
+
+      <h2>AI equipment for the cloud companies</h2>
+      <p>
+        In August, Cisco said it had delivered about $4 billion of AI equipment to the
+        hyperscalers in the year to July 2026 and expected $7.5 billion in the year to July
+        2027. It now expects $9 billion, more than double the year before.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts had expected adjusted earnings per share of $1.33 and revenue of $18.12
+        billion, Trefis reported. Cisco reported $1.40 and $18,517 million. Its own forecast in
+        August had been revenue of $18.0 billion to $18.2 billion and adjusted earnings per
+        share of $1.32 to $1.34.
+      </p>
+
+      <h2>The forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in August', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Forecast now', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue, year to July 2027', c1: '$72.2B to $73.4B', c2: '$74.8B to $75.8B' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$5.05 to $5.11', c2: '$5.47 to $5.53' } },
+        ]}
+      />
+      <p>
+        For the quarter to January 2027, Cisco expects revenue of $18.0 billion to $18.2
+        billion, slightly less than the quarter just reported, and adjusted earnings per share
+        of $1.34 to $1.36.
+      </p>
+
+      <h2>Cash and returns</h2>
+      <p>
+        Cisco generated $4.4 billion of cash from operations in the quarter, up 36%. It returned
+        $3.7 billion to shareholders: $1.7 billion in dividends and $2.0 billion buying back
+        about 18 million of its own shares, at an average of $112.38. It declared a quarterly
+        dividend of $0.42 a share, a rate of $1.68 a year, 1.8% of the share price on 16
+        November.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Cisco closed at $102.01 on 12 November. On 13 November it opened at $100.47, fell as low
+        as $95.26, and closed at $95.64, down 6.2%. The S&P 500 fell 0.4% and the Nasdaq
+        Composite 0.9% the same day. Of the 15 other large companies that make communications
+        equipment, 14 fell too, Trefis reported, with a median fall of 4.5%.
+      </p>
+      <p>
+        A week before, on 5 November, the shares had fallen 7.6%, the day Morgan Stanley lowered
+        its rating on Cisco, 24/7 Wall St. reported, and a day the S&P 500 fell 4.4%. On 16
+        November they closed at $94.52.
+      </p>
+      <p>
+        That leaves them 27.3% below their record close of $130.00 on 4 June 2026, though still
+        up 22.7% since the end of 2025.
+      </p>
+
+      <h2>How Cisco shares usually react to results</h2>
+      <p>
+        We measured all 43 of Cisco’s results releases before this one, from February 2016 to
+        August 2026. Cisco reports after the market closes, so we compared the close on the next
+        day with the close on the day it reported.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>4.8%</strong>.
+        </li>
+        <li>
+          19 of the 43 moved the shares by 5% or more, and 4 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>13.7%</strong> in May 2022.
+        </li>
+        <li>
+          The largest rise was <strong>13.4%</strong> in May 2026.
+        </li>
+        <li>
+          The shares rose after 24 of the 43 and fell after 19.
+        </li>
+        <li>
+          The three results before this one moved the shares down <strong>12.3%</strong> in
+          February, up <strong>13.4%</strong> in May and down <strong>8.4%</strong> in August
+          2026.
+        </li>
+      </ul>
+      <p>
+        So a 6.2% fall is bigger than Cisco’s usual move, though 13 of the 43 earlier results
+        moved the shares more.
+      </p>
+
+      <h2>How far Cisco has fallen before</h2>
+      <p>
+        Counting dividends, Cisco’s shares have fallen 25% or more ten times since 1990, the
+        start of our price history, including this year. These are measured from a record close
+        to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Cisco has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'July 1990', c1: 'October 1990', c2: '−32.2%', c3: 'October 1990' } },
+          { cells: { c0: 'February 1991', c1: 'April 1991', c2: '−26.1%', c3: 'April 1991' } },
+          { cells: { c0: 'August 1993', c1: 'September 1993', c2: '−28.9%', c3: 'December 1993' } },
+          { cells: { c0: 'March 1994', c1: 'July 1994', c2: '−51.4%', c3: 'April 1995' } },
+          { cells: { c0: 'November 1995', c1: 'January 1996', c2: '−25.6%', c3: 'February 1996' } },
+          { cells: { c0: 'January 1997', c1: 'April 1997', c2: '−38.1%', c3: 'July 1997' } },
+          { cells: { c0: 'August 1998', c1: 'October 1998', c2: '−36.7%', c3: 'November 1998' } },
+          { cells: { c0: 'March 2000', c1: 'October 2002', c2: '−89.3%', c3: 'August 2021' } },
+          { cells: { c0: 'December 2021', c1: 'October 2022', c2: '−36.7%', c3: 'November 2024' } },
+          { cells: { c0: 'June 2026', c1: 'November 2026', c2: '−27.3%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        This year’s fall, to $93.85 on 6 November, is 27.8% in the share price alone and 27.3%
+        counting dividends. The nine earlier falls all got back to their record. The fall that
+        began in March 2000 took more than 21 years, even counting dividends. That is a record
+        of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Orders.</strong> Whether orders pick up again, and how the lumpy AI orders
+          from the hyperscalers move.
+        </li>
+        <li>
+          <strong>The margin.</strong> Whether the full-year adjusted gross margin lands near
+          65%, as Patterson expects, with memory costs high.
+        </li>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the year lands between $74.8
+          billion and $75.8 billion.
+        </li>
+        <li>
+          <strong>AI.</strong> Whether AI revenue from the hyperscalers reaches $9 billion this
+          financial year.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Cisco’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'nebius-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Nebius, which rents out computing power for artificial intelligence from its own data
+        centres and those of partners, reported its results for the three months to 30 September
+        2026 before the market opened on 12 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $980.8 million, up 571% from $146.1 million a year earlier,
+          and up 68% on the quarter before.
+        </li>
+        <li>
+          <strong>One-off revenue:</strong> about $325 million of it came from a partnership
+          that Nebius says will not recur.
+        </li>
+        <li>
+          <strong>Profit:</strong> a net loss of $37.5 million, smaller than the $119.6 million
+          lost a year earlier.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue for 2026 at the low end of its $3.0 billion to
+          $3.4 billion range, because some capacity run by other companies is late.
+        </li>
+        <li>
+          <strong>Spending:</strong> about $27 billion this year, more than the $20 billion to
+          $25 billion it had planned, and $40 billion to $45 billion in 2027.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 16.8% on 12 November, to $128.64, and down another
+          9.9% the next day.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$980.8M', c2: '$146.1M', c3: '+571%' } },
+          { cells: { c0: 'Adjusted EBITDA', c1: '$465.8M', c2: '−$5.2M', c3: '' } },
+          { cells: { c0: 'Income from operations', c1: '$50.4M', c2: '−$130.2M', c3: '' } },
+          { cells: { c0: 'Net loss', c1: '−$37.5M', c2: '−$119.6M', c3: '' } },
+          { cells: { c0: 'Loss per share', c1: '−$0.13', c2: '−$0.50', c3: '' } },
+        ]}
+      />
+      <p>
+        Adjusted EBITDA is Nebius’s own measure of earnings before interest, tax, depreciation
+        and amortisation, which also leaves out the cost of the shares it pays its staff in.
+        Depreciation, the cost of its equipment spread over its life, was $354.7 million, 36% of
+        revenue against 68% a year earlier. Part of that fall is an accounting change: Nebius
+        now spreads the cost of its servers and network equipment over five years rather than
+        four.
+      </p>
+
+      <h2>A third of the revenue will not repeat</h2>
+      <p>
+        Nebius said it recognised “approximately $325 million of non-recurring revenue as part
+        of our asset-light model”, in which partners pay for data centres that run Nebius’s
+        technology. Its quarterly review gives the exact figure, $325.1 million, and says such
+        revenues “are by their nature non-recurring and the timing and amounts of such revenues
+        are hard to predict.”
+      </p>
+      <p>
+        Leaving that out, revenue was about $655.7 million, against $582.3 million in the
+        quarter to June.
+      </p>
+
+      <h2>What Nebius said about the rest of 2026</h2>
+      <p>
+        Nebius kept its revenue range of $3.0 billion to $3.4 billion but now expects the low
+        end. It said “some third-party capacity we expected to come online this year is now
+        scheduled for the first half of 2027”, and that the contracts behind it remain in place.
+        One delay is in New Jersey, where it is changing the power supply to fuel cells from
+        Bloom Energy.
+      </p>
+      <p>
+        It also moved back its target for annualised run-rate revenue, its revenue in one month
+        multiplied by 12. It had aimed for $7 billion to $9 billion by December; it now expects
+        more than $7 billion in February. At the end of September the figure was $6.4 billion,
+        up from $3.0 billion at the end of June. Nebius said it no longer sees it as “the right
+        measure of our business”, and from 2027 it will guide on revenue and pre-tax earnings
+        instead.
+      </p>
+      <p>
+        It now expects to spend about $27 billion in 2026, above its range of $20 billion to $25
+        billion, as it builds capacity for 2027.
+      </p>
+
+      <h2>The first forecast for 2027</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The first forecast for 2027"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '50%' },
+          { key: 'c1', label: '2027', width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$12 billion to $13 billion' } },
+          { cells: { c0: 'Capital spending', c1: '$40 billion to $45 billion' } },
+          { cells: { c0: 'Customer prepayments', c1: '$17 billion to $20 billion' } },
+          { cells: { c0: 'Pre-tax profit', c1: 'Breakeven in the fourth quarter' } },
+        ]}
+      />
+      <p>
+        Nebius said the revenue range was “approximately four times our 2026 revenue”. It
+        expects prepayments and financing backed by contracts with investment-grade customers to
+        cover 75% to 85% of its 2027 spending.
+      </p>
+
+      <h2>Prepayments and contracts</h2>
+      <p>
+        Nebius said customers had committed more than $12 billion in contract value since the
+        start of the third quarter. Prepayments on deals signed in the quarter covered more than
+        100% of the spending on the capacity behind them, up from 50% to 60% on deals signed in
+        the quarter before.
+      </p>
+      <p>
+        Its remaining performance obligations, the revenue it is owed under signed contracts,
+        were $38.7 billion at the end of September, up 3% from $37.5 billion at the end of June.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts had expected a loss of $0.63 a share and revenue of $907.2 million,
+        Investing.com reported. Nebius reported a loss of $0.13 and revenue of $980.8 million.
+        For 2027 analysts had expected revenue of $11.98 billion, below the middle of Nebius’s
+        range.
+      </p>
+
+      <h2>Cash</h2>
+      <p>
+        Nebius spent $7,300.4 million on equipment and other assets in the quarter. It ended
+        September with $7,425.6 million of cash, against $3,678.1 million at the end of 2025. In
+        October it agreed a $3.5 billion financing facility with Citi.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Nebius closed at $154.69 on 11 November, up 15.4% that day. On 12 November it opened at
+        $119.94, fell as low as $118.81, and closed at $128.64, down 16.8%. The Nasdaq Composite
+        fell 0.4% the same day. On 13 November it fell another 9.9%, to $115.88, and on 16
+        November it closed at $107.13.
+      </p>
+      <p>
+        InvestorsHub reported that the new guidance “prompted analysts to reduce their share
+        price targets”, while uncertainty about AI infrastructure companies added to the
+        pressure.
+      </p>
+      <p>
+        That leaves the shares 62.6% below their record close of $286.69, set on 18 June 2026,
+        though still up 28.0% since the end of 2025.
+      </p>
+
+      <h2>How Nebius shares usually react to results</h2>
+      <p>
+        Nebius, formerly Yandex N.V., saw its shares resume trading on Nasdaq on 21 October
+        2024. We measured all eight of its results releases since then, from October 2024 to
+        August 2026. Nebius reports before the market opens, so we compared the close on the day
+        it reported with the close the day before.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>5.6%</strong>.
+        </li>
+        <li>
+          The shares rose after 6 of the 8 and fell after 2.
+        </li>
+        <li>
+          The largest fall was <strong>7.0%</strong> in November 2025.
+        </li>
+        <li>
+          The largest rise was <strong>34.1%</strong> in August 2026, after the last results.
+        </li>
+      </ul>
+      <p>
+        So this 16.8% fall was more than twice the size of any earlier results-day fall.
+      </p>
+
+      <h2>How far Nebius has fallen before</h2>
+      <p>
+        Nebius’s shares have fallen 30% or more four times since trading resumed. These are
+        measured from a record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Nebius has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'January 2025', c1: 'January 2025', c2: '−37.4%', c3: 'February 2025' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−58.3%', c3: 'June 2025' } },
+          { cells: { c0: 'October 2025', c1: 'February 2026', c2: '−45.5%', c3: 'April 2026' } },
+          { cells: { c0: 'June 2026', c1: 'November 2026', c2: '−62.6%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The three earlier falls all got back to their record, the slowest about six months after
+        it was set. That is a record of a short history, not a guide to what will happen.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Capacity.</strong> Whether the delayed capacity, including New Jersey, comes
+          online in the first half of 2027.
+        </li>
+        <li>
+          <strong>2026.</strong> Whether revenue lands at the low end of $3.0 billion to $3.4
+          billion, as Nebius now expects.
+        </li>
+        <li>
+          <strong>Spending.</strong> How Nebius funds $40 billion to $45 billion of spending in
+          2027, and how much prepayments cover.
+        </li>
+        <li>
+          <strong>Profit.</strong> Whether it reaches pre-tax breakeven in the fourth quarter of
+          2027.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Nebius’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'nvidia-q3-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Nvidia, which designs the chips and computer systems that most artificial intelligence
+        runs on, reported its results for the three months to 25 October 2026, the third quarter
+        of its financial year, after the market closed on 17 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $115.8 billion, up 103% from $57.0 billion a year earlier,
+          and $7.8 billion above the middle of Nvidia’s own forecast.
+        </li>
+        <li>
+          <strong>Data centres:</strong> $107.6 billion of it, up 110%.
+        </li>
+        <li>
+          <strong>The forecast:</strong> about $130 billion for the quarter to January. That
+          quarter has an extra week, and per week the rise is smaller than it looks.
+        </li>
+        <li>
+          <strong>The new boss:</strong> the results were Nvidia’s first since Jensen Huang, who
+          co-founded it, resigned as chief executive on 12 November. Its finance chief, Colette
+          Kress, is running it until a successor is found.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 2.9% on 18 November, to $150.96, after opening
+          higher.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$115.8B', c2: '$57.0B', c3: '+103%' } },
+          { cells: { c0: 'Gross margin', c1: '74.8%', c2: '73.4%', c3: '+1.4 points' } },
+          { cells: { c0: 'Operating income', c1: '$77.5B', c2: '$36.0B', c3: '+115%' } },
+          { cells: { c0: 'Net income', c1: '$65.3B', c2: '$31.9B', c3: '+105%' } },
+          { cells: { c0: 'Earnings per share', c1: '$2.70', c2: '$1.30', c3: '+108%' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$2.68', c2: '$1.27', c3: '+111%' } },
+        ]}
+      />
+      <p>
+        Adjusted earnings per share is Nvidia’s own measure. Since the start of this financial
+        year it no longer leaves out the cost of the shares it pays its staff in, so it sits
+        close to the reported figure. This quarter it was slightly lower, because it leaves out
+        a $1.8 billion net gain on the companies Nvidia has invested in.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Data centres', c1: '$107.6B', c2: '$51.2B', c3: '+110%' } },
+          { cells: { c0: 'of which the largest cloud companies', c1: '$60.1B', c2: '$35.1B', c3: '+71%' } },
+          { cells: { c0: 'of which other AI clouds, industry and business', c1: '$47.5B', c2: '$16.1B', c3: '+195%' } },
+          { cells: { c0: 'Edge computing (PCs, robots, cars)', c1: '$8.2B', c2: '$5.8B', c3: '+42%' } },
+        ]}
+      />
+      <p>
+        Nvidia said the growth came from its new Rubin chips, “our fastest architecture ramp
+        ever”, its Vera processors, and Blackwell Ultra. It shipped $2.4 billion of its Hopper
+        data-centre chips to China in the quarter.
+      </p>
+
+      <h2>How far it beat its own forecast</h2>
+      <p>
+        In August Nvidia forecast revenue of $108.0 billion, plus or minus 2%, for this quarter.
+        It reported $115.8 billion, $7.8 billion or 7.3% above the middle, and $5.7 billion
+        above the top of the range.
+      </p>
+      <p>
+        Analysts had expected adjusted earnings per share of $2.48 and revenue of $109.10
+        billion, according to LSEG data reported by CNBC.
+      </p>
+
+      <h2>The forecast, and the extra week</h2>
+      <p>
+        Nvidia expects revenue of $130.0 billion, plus or minus 3%, for the quarter to January,
+        against $125.1 billion that analysts had expected, CNBC reported. That is 12.2% more
+        than this quarter.
+      </p>
+      <p>
+        But Nvidia says the quarter “includes an additional week”: 14 weeks, against 13 in the
+        quarter just reported. Per week, $130.0 billion is about $9.29 billion, against about
+        $8.91 billion this quarter, a rise of 4.2%.
+      </p>
+      <p>
+        The forecast assumes no data-centre chip revenue from China. Nvidia expects its gross
+        margin, the share of revenue left after the direct cost of what it sells, to fall to
+        between 71.0% and 72.0%, from 74.8%.
+      </p>
+      <p>
+        Looking further ahead, Kress said on the call that Nvidia expects revenue to grow 75% in
+        the year to January 2028, up from the 70% it had forecast before, CNBC reported.
+      </p>
+
+      <h2>A new chief executive, and an investigation</h2>
+      <p>
+        On 8 November Nvidia’s board said it was “initiating an independent investigation in
+        light of recent reporting that founder and CEO Jensen Huang has been the target of a
+        foreign intelligence effort”. It added that it had “no reason to believe that either
+        national security or NVIDIA secrets were compromised”. A committee of independent
+        directors is overseeing it, with outside lawyers.
+      </p>
+      <p>
+        Nvidia’s filing says the board accepted Huang’s resignation as president, chief
+        executive and director on 11 November, effective immediately, and announced it the next
+        day. The board named Kress interim chief executive, alongside her role as finance chief,
+        which she has held since 2013, and appointed Harvey C. Jones, a director since 1993, as
+        its first chair. Nvidia’s results release says the investigation is still going on.
+      </p>
+      <p>
+        In a statement reported by CNBC on 17 November, Huang said: “I have made serious
+        mistakes in my personal life.” He said he would be “honored” to return if the board
+        decided that was in the company’s interest. On the results call, Jones said the board
+        did not intend to reinstate him, CNBC and NBC News reported.
+      </p>
+
+      <h2>Cash, stock and commitments</h2>
+      <p>
+        Nvidia generated $48.3 billion of cash from operations in the quarter, less than its
+        $65.3 billion of net income. The biggest part of the gap is money it is still owed: what
+        customers owe it rose $18.1 billion in the quarter, to $81.0 billion. Nvidia said this
+        reflected the timing of Rubin shipments and “extended payment terms on large,
+        multi-quarter agreements with certain investment-grade customers”. Its stock of unsold
+        chips and parts rose to $39.7 billion, from $31.6 billion three months earlier, for the
+        Rubin ramp.
+      </p>
+      <p>
+        It has also promised a great deal ahead:
+      </p>
+      <ul>
+        <li>
+          <strong>Supplies:</strong> $390 billion of commitments to buy parts and capacity, up
+          from $279 billion three months earlier, mainly memory for several years ahead.
+        </li>
+        <li>
+          <strong>Guarantees:</strong> up to $118.0 billion that Nvidia may have to pay if
+          certain partners fail to meet their own obligations. Most of it, up to $105.0 billion,
+          backs the building of data centres in Ohio that will be leased to OpenAI. Nvidia says
+          it has made no payments under its guarantees so far.
+        </li>
+      </ul>
+      <p>
+        It returned $28.1 billion to shareholders in the quarter: $22.1 billion buying back its
+        own shares and $6.0 billion in dividends, against $243 million in dividends a year
+        earlier. It pays $0.25 a share each quarter.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Nvidia closed at $155.46 on 17 November. On 18 November it opened at $159.19, up 2.4%,
+        then fell as low as $150.40 and closed at $150.96, down 2.9%. The S&P 500 fell 0.2% and
+        the Nasdaq Composite rose 0.4% the same day.
+      </p>
+      <p>
+        The Motley Fool reported that investors “are now watching succession uncertainty and
+        China-related regulatory scrutiny”.
+      </p>
+      <p>
+        The fall started before the results. Nvidia closed at $186.64 on 6 November, the last
+        trading day before the board’s statement, and has fallen 19.1% since. It is 36.9% below
+        its record close of $239.24, set on 6 October 2026, and down 19.1% since the end of
+        2025.
+      </p>
+
+      <h2>How Nvidia shares usually react to results</h2>
+      <p>
+        We measured all 43 of Nvidia’s results releases before this one, from February 2016 to
+        August 2026. Nvidia reports after the market closes, so we compared the next day’s close
+        with the close on the day it reported.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>5.3%</strong>.
+        </li>
+        <li>
+          23 of the 43 moved the shares by 5% or more, and 7 by 10% or more.
+        </li>
+        <li>
+          The shares rose after 25 and fell after 18.
+        </li>
+        <li>
+          The largest fall was <strong>18.8%</strong> in November 2018.
+        </li>
+        <li>
+          The largest rise was <strong>29.8%</strong> in November 2016.
+        </li>
+      </ul>
+      <p>
+        So a 2.9% fall is a small move for Nvidia on a results day.
+      </p>
+
+      <h2>How far Nvidia has fallen before</h2>
+      <p>
+        Counting dividends and allowing for share splits, Nvidia’s shares have fallen 50% or
+        more seven times since 1999, the start of our price history. These are measured from a
+        record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Nvidia has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'March 2000', c1: 'April 2000', c2: '−53.9%', c3: 'June 2000' } },
+          { cells: { c0: 'June 2000', c1: 'December 2000', c2: '−67.8%', c3: 'April 2001' } },
+          { cells: { c0: 'June 2001', c1: 'October 2001', c2: '−51.9%', c3: 'November 2001' } },
+          { cells: { c0: 'January 2002', c1: 'October 2002', c2: '−89.7%', c3: 'November 2006' } },
+          { cells: { c0: 'October 2007', c1: 'November 2008', c2: '−85.1%', c3: 'April 2016' } },
+          { cells: { c0: 'October 2018', c1: 'December 2018', c2: '−56.0%', c3: 'February 2020' } },
+          { cells: { c0: 'November 2021', c1: 'October 2022', c2: '−66.3%', c3: 'May 2023' } },
+        ]}
+      />
+      <p>
+        All seven got back to their record. The slowest, the fall that began in 2007, took eight
+        and a half years. The current fall, 36.9% from the October record, is smaller than any
+        of them so far. That is a record of what happened, not a guide to what will happen.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the quarter to January lands
+          between $126.1 billion and $133.9 billion.
+        </li>
+        <li>
+          <strong>The margin.</strong> Whether the gross margin lands between 71.0% and 72.0%,
+          as Nvidia expects.
+        </li>
+        <li>
+          <strong>The chief executive.</strong> Who the board names, and when.
+        </li>
+        <li>
+          <strong>The investigation.</strong> What the independent committee finds.
+        </li>
+        <li>
+          <strong>Cash.</strong> Whether what customers owe Nvidia keeps growing faster than its
+          revenue.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Nvidia’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
