@@ -1075,6 +1075,198 @@ export const ARTICLES = [
     ctaText:
       'Each of the big four banks has its own page on MajorCycle: its price history, how far it has fallen and recovered before, and its fundamentals. The same pages cover every stock we track in the US, Australia and Canada.',
   },
+  {
+    slug: 'coca-cola-q3-2026-results',
+    title: 'Coca-Cola’s third-quarter 2026 results, explained',
+    question: 'Why did Coca-Cola’s shares fall after it raised its forecast for the third time?',
+    answer:
+      'Coca-Cola’s revenue rose 7% to $13.4 billion in the third quarter of 2026, above analysts’ forecasts, and it raised its forecast for the year for the third time. Its shares still fell 1.6% on results day, which CNBC linked to a gloomy view of the consumer, but on 28 October they were up 31.2% this year.',
+    summary:
+      'Coca-Cola’s Q3 2026 from its own filings: volume up 5%, a forecast raised for the third time this year, a $6 billion tax case, and a 1.6% fall.',
+    kind: 'commentary',
+    deck: [
+      'Volume rose 5% and Coca-Cola raised its forecast for the third time this year. ',
+      { strong: 'Its shares still fell on results day.' },
+    ],
+    finding: [
+      'Volume ',
+      { figure: '+5%' },
+      ', comparable earnings per share ',
+      { figure: '+11%' },
+      ', shares ',
+      { figure: '−1.6%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$13.4B', label: 'revenue' },
+      { value: '$0.91', label: 'comparable earnings per share, up 11%' },
+      { value: '$6.0B', label: 'paid to the IRS while Coca-Cola appeals' },
+    ],
+    region: 'United States',
+    published: '2026-10-29',
+    reviewed: '2026-10-29',
+    minutes: 8,
+  },
+  {
+    slug: 'mcdonalds-q3-2026-results',
+    title: 'McDonald’s third-quarter 2026 results, explained',
+    question: 'Why did McDonald’s shares rise 6.5% when its US sales fell?',
+    answer:
+      'McDonald’s US sales fell 0.2% in the third quarter of 2026, less than analysts expected, and it said they turned positive in September. Its earnings per share rose 10%, and its shares rose 6.5% on results day, their biggest results-day rise in ten years, though they were still 18.5% below their February record.',
+    summary:
+      'McDonald’s Q3 2026 from its own filings: US sales down 0.2%, a new value plan, profit up 10%, and the shares’ best results day in ten years.',
+    kind: 'commentary',
+    deck: [
+      'US sales slipped 0.2%, and turned positive in September. ',
+      { strong: 'The shares had their best results day in ten years.' },
+    ],
+    finding: [
+      'US sales ',
+      { figure: '−0.2%' },
+      ', earnings per share ',
+      { figure: '+10%' },
+      ', shares ',
+      { figure: '+6.5%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$38B+', label: 'sales at all its restaurants' },
+      { value: '1,900', label: 'US restaurants testing new low-price bundles' },
+      { value: '$1.93', label: 'quarterly dividend, up 4%' },
+    ],
+    region: 'United States',
+    published: '2026-11-06',
+    reviewed: '2026-11-06',
+    minutes: 8,
+  },
+  {
+    slug: 'applied-materials-q4-fy26-results',
+    title: 'Applied Materials’ fourth-quarter 2026 results, explained',
+    question: 'Why did Applied Materials’ shares fall after its revenue rose 53%?',
+    answer:
+      'Applied Materials’ revenue rose 53% to a record $10.41 billion in the quarter to October 2026, above analysts’ forecasts, and it expects 58% growth in the next quarter. Its shares still fell 2.7% the next day, leaving them 48.8% below their June record, though up 44.2% this year.',
+    summary:
+      'Applied Materials’ quarter from its own filings: record revenue up 53%, a 58% growth forecast, a $653 million investment loss, and a 2.7% fall.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 53% to a record, and Applied forecast 58% growth. ',
+      { strong: 'The shares are still half their June record.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+53%' },
+      ', next quarter ',
+      { figure: '+58%' },
+      ', shares ',
+      { figure: '−2.7%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$10.41B', label: 'revenue, a record' },
+      { value: '+30%', label: 'industry equipment spending Applied expects in 2027' },
+      { value: '−48.8%', label: 'below the June record' },
+    ],
+    region: 'United States',
+    published: '2026-11-14',
+    reviewed: '2026-11-14',
+    minutes: 6,
+  },
+  {
+    slug: 'cisco-q1-fy27-results',
+    title: 'Cisco’s results for the quarter to October 2026, explained',
+    question: 'Why did Cisco’s shares fall 6.2% after its fastest growth in 15 years?',
+    answer:
+      'Cisco’s revenue rose 24% to a record $18.5 billion in the quarter to October 2026, its fastest growth in more than 15 years, and it raised its forecast for the year. But its orders grew more slowly than the quarter before and its margin fell, and its shares fell 6.2% the next day.',
+    summary:
+      'Cisco’s quarter from its own filings: revenue up 24%, a higher forecast, orders growing more slowly, a lower margin, and a 6.2% fall.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 24%, Cisco’s fastest growth in more than 15 years. ',
+      { strong: 'But orders grew more slowly and the margin fell.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+24%' },
+      ', orders ',
+      { figure: '+21%' },
+      ', shares ',
+      { figure: '−6.2%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$18.5B', label: 'revenue, a record' },
+      { value: '$9B', label: 'AI revenue Cisco expects from the largest cloud companies this year' },
+      { value: '63.7%', label: 'gross margin, down from 65.5%' },
+    ],
+    region: 'United States',
+    published: '2026-11-17',
+    reviewed: '2026-11-17',
+    minutes: 7,
+  },
+  {
+    slug: 'nebius-q3-2026-results',
+    title: 'Nebius’s third-quarter 2026 results, explained',
+    question: 'Why did Nebius’s shares fall 16.8% when its revenue rose 571%?',
+    answer:
+      'Nebius’s revenue rose 571% to $980.8 million in the third quarter of 2026, above analysts’ forecasts, but about a third of it will not repeat, and it said some new capacity would arrive months late. Its shares fell 16.8% on results day, their biggest results-day fall since trading resumed in 2024.',
+    summary:
+      'Nebius’s quarter from its own filings: revenue up 571%, a third of it one-off, a delayed 2026, $40 billion of spending planned, and a 16.8% fall.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 571%, but a third of it will not repeat. ',
+      { strong: 'Some new capacity is months late.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+571%' },
+      ', one-off ',
+      { figure: '$325M' },
+      ', shares ',
+      { figure: '−16.8%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$980.8M', label: 'revenue' },
+      { value: '$12–13B', label: 'revenue Nebius expects in 2027' },
+      { value: '$40–45B', label: 'spending Nebius plans in 2027' },
+    ],
+    region: 'United States',
+    published: '2026-11-18',
+    reviewed: '2026-11-18',
+    minutes: 6,
+  },
+  {
+    slug: 'nvidia-q3-fy27-results',
+    title: 'Nvidia’s results for the quarter to October 2026, explained',
+    question: 'Why did Nvidia’s shares fall when its revenue doubled?',
+    answer:
+      'Nvidia’s revenue more than doubled to $115.8 billion in the quarter to October 2026, and it forecast $130 billion for the next. Its shares still fell 2.9% the next day, its first results since Jensen Huang resigned as chief executive, leaving them 36.9% below their October record.',
+    summary:
+      'Nvidia’s quarter from its own filings: revenue up 103%, a $130 billion forecast with an extra week in it, a new chief executive, and a 2.9% fall.',
+    kind: 'commentary',
+    deck: [
+      'Revenue more than doubled, in Nvidia’s first results since its chief executive resigned. ',
+      { strong: 'Its shares still fell.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+103%' },
+      ', next quarter ',
+      { figure: '+12.2%' },
+      ', shares ',
+      { figure: '−2.9%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$115.8B', label: 'revenue' },
+      { value: '+4.2%', label: 'next quarter’s forecast, per week' },
+      { value: '−36.9%', label: 'below the October record' },
+    ],
+    region: 'United States',
+    published: '2026-11-19',
+    reviewed: '2026-11-19',
+    minutes: 7,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];

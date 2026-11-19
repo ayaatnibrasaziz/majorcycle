@@ -68,6 +68,10 @@ async function ready(page: Page): Promise<void> {
 }
 
 test.describe('the Articles section', () => {
+  // Seven tests here open EVERY article in turn, so the time each may take grows with the list. At 33 articles the
+  // default 60 seconds timed out whenever the machine was busy; a fixed number would be outgrown again by the next
+  // batch. Tests that measure more than once per article (the table-cell check) set a longer limit of their own.
+  test.beforeEach(() => test.setTimeout(60_000 + PATHS.length * 4_000));
   test('the registry is not empty', async () => {
     // The control for everything below. Every other test loops over PATHS, so an
     // empty registry would make all of them pass having measured nothing — the

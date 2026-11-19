@@ -181,3 +181,6 @@ reference/landing-concept/retired/
 # Article 29 (home loans, Sep qtr 2026): ABS, RBA, APRA and bank documents saved as sources.
 reference/housing-2026-11/sources/
 reference/housing-2026-11-DATA.json.gz
+
+# November results articles, batch B (KO MCD AMAT CSCO NBIS PANW): SEC filings, transcripts and news saved as sources.
+reference/earn-2026-nov-b/
