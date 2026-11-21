@@ -21,7 +21,7 @@
 | **URL** | `/articles/palo-alto-networks-q1-fy27-results` |
 | **Title tag** | Palo Alto Q1 FY27 earnings: revenue up 39%, shares up 6.4% |
 | **H1** | Palo Alto Networks' results for the quarter to October 2026, explained |
-| **Meta description** | Palo Alto Networks' quarter from its own filings: revenue up 39%, much of it bought, profit down, a higher forecast, a $4.5 billion AI deal, and a 6.4% rise. |
+| **Meta description** | Palo Alto Networks' quarter from its own filings: revenue up 39%, much of it bought, profit down, a higher forecast, a $4.5B AI deal, and a 6.4% rise. |
 | **Kind** | Market commentary |
 | **Region pill** | United States |
 | **Reading time** | 10 minutes |

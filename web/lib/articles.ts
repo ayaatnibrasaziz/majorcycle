@@ -1315,7 +1315,7 @@ export const ARTICLES = [
     answer:
       'Palo Alto Networks’ revenue rose 39% to $3,445 million in the quarter to October 2026, much of it from two companies it bought this year, and it raised its forecast for the year. Its shares rose 6.4% the next day, on a day the S&P 500 fell 2.0%.',
     summary:
-      'Palo Alto Networks’ quarter from its own filings: revenue up 39%, much of it bought, profit down, a higher forecast, a $4.5 billion AI deal, and a 6.4% rise.',
+      'Palo Alto Networks’ quarter from its own filings: revenue up 39%, much of it bought, profit down, a higher forecast, a $4.5B AI deal, and a 6.4% rise.',
     kind: 'commentary',
     deck: [
       'Revenue rose 39%, much of it from two companies Palo Alto bought this year. ',
