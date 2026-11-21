@@ -149,8 +149,14 @@ export interface LearnArticle {
   /** URL segment. Lower-case, hyphenated, never changed once published — a
    *  changed slug is a dead link everywhere the old one was ever shared. */
   readonly slug: string;
-  /** `<h1>` and the browser title. */
+  /** `<h1>`, and the browser title when there is no `searchTitle`. */
   readonly title: string;
+  /**
+   * A shorter title for search results and share cards, shown exactly as written
+   * (no " | MajorCycle"). Only where `title` plus the suffix runs past ~60
+   * characters, which Google cuts off.
+   */
+  readonly searchTitle?: string;
   /**
    * The question a real person types, in their words rather than ours.
    *
@@ -263,6 +269,7 @@ export const LEARN_ARTICLES = [
   {
     slug: 'own-history-vs-market-average',
     title: 'Why your company’s own history beats the market’s average',
+    searchTitle: 'Why a company’s own history beats the market average',
     question: 'How much does a stock usually fall?',
     answer:
       'There is no general answer. Market-wide figures describe an index, and an index falls far less than the companies inside it — because they do not all fall at the same time. The only useful benchmark for one share is what that share has done before.',

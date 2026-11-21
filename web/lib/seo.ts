@@ -258,8 +258,8 @@ export function pageMetadata(opts: {
   article?: { readonly published: string; readonly modified: string };
   /**
    * A title for search results and share cards that replaces `title` there and is
-   * shown exactly as written — no " | MajorCycle". Articles only (SEO audit
-   * 2026-11-19); `title` stays the page's own heading.
+   * shown exactly as written — no " | MajorCycle". Articles and Learn pages (SEO
+   * audit 2026-11-19); `title` stays the page's own heading.
    */
   searchTitle?: string;
 }): Metadata {

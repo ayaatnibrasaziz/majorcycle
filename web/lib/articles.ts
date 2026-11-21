@@ -323,6 +323,7 @@ export const ARTICLES = [
   {
     slug: 'asx-tech-shares-how-far-have-they-fallen',
     title: 'ASX tech shares are down by half. How unusual is that?',
+    searchTitle: 'ASX tech shares down 53.2%: how unusual is that fall?',
     question: 'How far have ASX tech shares fallen?',
     answer:
       'The ASX 200 sits 6.2% below its high. The typical technology company in it sits 53.2% below its own, twice the 25.2% it normally falls. Their past falls recovered faster than the rest of the market’s, but eight of the fifteen are now deeper than any fall they have come back from.',
@@ -1080,6 +1081,7 @@ export const ARTICLES = [
   {
     slug: 'home-loans-record-fall-bank-shares',
     title: 'Australia’s home loans just had their biggest fall on record',
+    searchTitle: 'Home loans fell a record 15.5%: what it means for banks',
     question: 'What does the record fall in home loans mean for the banks?',
     answer:
       'New home loans fell 15.5% in the September quarter and investor loans 32.3%, the biggest falls since the ABS series began in 2002. The RBA blames higher rates and the budget’s tax changes. The banks expect fewer new loans and lower house prices, but so far their shares have not fallen with the housing market.',
