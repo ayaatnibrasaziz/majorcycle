@@ -64,6 +64,7 @@ export async function generateMetadata({
   return pageMetadata({
     path: learnPath(article.slug),
     title: article.title,
+    searchTitle: article.searchTitle,
     // The summary, not the answer. This is the sentence under the blue link in a
     // search result, and it should say what the page covers — the answer itself
     // is what the reader gets by clicking.

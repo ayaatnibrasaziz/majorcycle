@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 import { ARTICLES, type Article, articlePath } from '@/lib/articles';
+import { LEARN_ARTICLES, type LearnArticle, learnPath } from '@/lib/learn';
 import { INDEXNOW_KEY, INDEXNOW_KEY_PATH } from '@/lib/indexnow';
 import { OG_IMAGE, PUBLIC_PAGES, pageUrl } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
@@ -185,6 +186,12 @@ test.describe('page metadata on the rendered HTML', () => {
     test(`${page.path} carries a canonical and an Open Graph card`, async ({ page: pw }) => {
       await pw.goto(page.path);
 
+      // Google cuts a result's title at roughly 60 characters. Three pages ran to
+      // 67–73 with the " | MajorCycle" suffix (Search Console check, 2026-11-21);
+      // a page whose heading is long gives itself a `searchTitle` instead.
+      const served = await pw.title();
+      expect(served.length, `${page.path}: <title> is ${served.length} characters — "${served}"`).toBeLessThanOrEqual(65);
+
       const canonical = pw.locator('link[rel="canonical"]');
       await expect(canonical).toHaveAttribute('href', pageUrl(page.path));
 
@@ -193,7 +200,9 @@ test.describe('page metadata on the rendered HTML', () => {
       // fail silently as an untitled share card.
       // An article with a `searchTitle` shows exactly that, with no suffix (SEO audit
       // 2026-11-19); every other page carries the brand.
-      const searchTitle = (ARTICLES as readonly Article[]).find((a) => articlePath(a.slug) === page.path)?.searchTitle;
+      const searchTitle =
+        (ARTICLES as readonly Article[]).find((a) => articlePath(a.slug) === page.path)?.searchTitle ??
+        (LEARN_ARTICLES as readonly LearnArticle[]).find((a) => learnPath(a.slug) === page.path)?.searchTitle;
       await expect(pw.locator('meta[property="og:title"]')).toHaveAttribute(
         'content',
         searchTitle ?? /MajorCycle/,
