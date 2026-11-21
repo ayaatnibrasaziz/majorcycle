@@ -10440,6 +10440,343 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'palo-alto-networks-q1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Palo Alto Networks, which sells cybersecurity software and firewalls to companies and
+        governments, reported its results for the three months to 31 October 2026, the first
+        quarter of its financial year, after the market closed on 18 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $3,445 million, up 39% from $2,474 million a year earlier,
+          and above analysts’ forecasts.
+        </li>
+        <li>
+          <strong>What it bought:</strong> a year earlier Palo Alto did not yet own CyberArk or
+          Chronosphere, two companies it bought in early 2026 for $24.1 billion between them.
+          Much of the growth comes from them.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income fell to $96 million from $309 million, as
+          costs from those deals rose. Net income rose to $482 million, helped by a $457 million
+          tax benefit.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue for the year to July 2027 of $14.52 billion to
+          $14.57 billion, up from $14.10 billion to $14.20 billion. The increase is bigger than
+          the amount by which this quarter beat Palo Alto’s own forecast.
+        </li>
+        <li>
+          <strong>A new deal:</strong> Palo Alto agreed to buy Applied Compute, an AI start-up,
+          for $4.5 billion in shares.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 6.4% on 19 November, to $361.73, while the S&P 500
+          fell 2.0%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$3,445M', c2: '$2,474M', c3: '+39%' } },
+          { cells: { c0: 'Gross margin', c1: '68.0%', c2: '74.2%', c3: '−6.2 points' } },
+          { cells: { c0: 'Operating income', c1: '$96M', c2: '$309M', c3: '−69%' } },
+          { cells: { c0: 'Net income', c1: '$482M', c2: '$334M', c3: '+44%' } },
+          { cells: { c0: 'Earnings per share', c1: '$0.57', c2: '$0.47', c3: '+21%' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$1.05', c2: '$0.93', c3: '+13%' } },
+        ]}
+      />
+      <p>
+        Adjusted earnings per share is Palo Alto’s own measure. It leaves out the cost of the
+        shares it pays its staff in, $0.74 a share this quarter, and an accounting charge for
+        the companies it has bought, $0.34 a share, among other items. It also replaces the
+        actual tax charge with a long-term rate, which this quarter took out $0.84 a share.
+      </p>
+
+      <h2>How much of the growth was bought</h2>
+      <p>
+        Palo Alto completed two large purchases early in 2026. It bought Chronosphere, which
+        helps companies monitor their software and cloud systems, on 29 January for $3.0
+        billion. It bought CyberArk, which secures the identities people and software use to log
+        in, on 11 February for $21.1 billion, paying CyberArk’s shareholders $45.00 in cash and
+        2.2005 Palo Alto shares for each of theirs. Neither was part of Palo Alto a year
+        earlier, so the 39% compares a larger company with a smaller one.
+      </p>
+      <p>
+        Palo Alto does not publish a combined figure for the quarter, but its annual report does
+        for the year to July 2026. Counting the two companies as if Palo Alto had always owned
+        them, revenue rose 17% that year, against 25% as reported.
+      </p>
+      <p>
+        The results call gave the same split by business:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How much of the growth was bought"
+        columns={[
+          { key: 'c0', label: 'Business', width: '40%' },
+          { key: 'c1', label: 'Growth as reported', width: '30%' },
+          { key: 'c2', label: 'As if the deals had always been in place', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Network and AI security', c1: '+20%', c2: 'No separate figure given' } },
+          { cells: { c0: 'Cortex (security operations, now including Chronosphere)', c1: '+53%', c2: '+40%' } },
+          { cells: { c0: 'Identity security (CyberArk)', c1: 'Not given', c2: '+23%' } },
+        ]}
+      />
+      <p>
+        The deal also enlarged the share count. Palo Alto’s diluted shares rose to 838 million
+        from 709 million, up 18%, so each share has a smaller slice of the profit. That is one
+        reason adjusted earnings per share rose 13% while revenue rose 39%.
+      </p>
+
+      <h2>Why profit fell while revenue rose</h2>
+      <p>
+        The cost of the deals shows up in the accounts. The charge for the value of what it
+        bought, spread over time, rose to $282 million from $39 million. The cost of the shares
+        it pays its staff in rose to $622 million from $387 million. Operating income fell 69%.
+      </p>
+      <p>
+        Net income still rose 44%, because Palo Alto recorded a tax benefit of $457 million
+        against a $78 million tax charge a year earlier. Its release says the quarter included
+        “a one-time tax adjustment relating to a change in our tax position on a historical
+        transaction”. Before tax, it made $25 million, against $412 million a year earlier.
+      </p>
+      <p>
+        The gross margin, the share of revenue left after the direct cost of what it sells, fell
+        from 74.2% to 68.0%. On Palo Alto’s adjusted measure it was 75.2%, down 1.7 points. Its
+        finance chief, Dipak Golechha, said on the call that component costs for its hardware
+        were elevated across the industry and would weigh on the margin all year, and that newer
+        software services, earlier in their life, cost more to run. Hardware is about 10% of
+        Palo Alto’s revenue, he said.
+      </p>
+
+      <h2>Recurring revenue and contracts</h2>
+      <p>
+        Palo Alto’s next-generation security annual recurring revenue, the yearly value of its
+        contracts for its newer products and subscriptions, rose 66% to $9.73 billion. Because
+        it counts every such contract, it also includes CyberArk and Chronosphere, which a year
+        earlier it did not.
+      </p>
+      <p>
+        Its remaining performance obligations, the revenue it is owed under signed contracts,
+        rose 35% to $21.0 billion.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Analysts had expected adjusted earnings per share of $0.97 and revenue of $3.31 billion,
+        according to LSEG data reported by CNBC. Palo Alto reported $1.05 and $3,445 million.
+        For the full year, analysts had expected revenue of $14.16 billion and adjusted earnings
+        per share of $4.18, below Palo Alto’s new ranges.
+      </p>
+
+      <h2>What Palo Alto now expects</h2>
+      <p>
+        In September Palo Alto forecast revenue of $3.300 billion to $3.310 billion for this
+        quarter. It reported $3,445 million, about $140 million above the middle of that range.
+        It then raised its forecast for the year by about $395 million at the middle:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What Palo Alto now expects"
+        columns={[
+          { key: 'c0', label: 'Year to July 2027', width: '40%' },
+          { key: 'c1', label: 'September forecast', numeric: true, width: '30%' },
+          { key: 'c2', label: 'November forecast', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$14.10B to $14.20B', c2: '$14.52B to $14.57B' } },
+          { cells: { c0: 'Adjusted earnings per share', c1: '$4.16 to $4.19', c2: '$4.26 to $4.30' } },
+        ]}
+      />
+      <p>
+        So Palo Alto now expects about $11.1 billion of revenue from the three quarters still to
+        come, up from about $10.8 billion. For the quarter to January it expects revenue of
+        $3.530 billion to $3.550 billion and adjusted earnings per share of $1.01 to $1.03. It
+        also raised its forecast for next-generation security recurring revenue, to $11.475
+        billion to $11.525 billion from $11.075 billion to $11.175 billion.
+      </p>
+      <p>
+        “Given the current threat environment and demand we see ahead of us, we are materially
+        raising our full year guidance,” Golechha said in the release. None of these forecasts
+        include Applied Compute.
+      </p>
+
+      <h2>The Applied Compute deal</h2>
+      <p>
+        Applied Compute helps companies train and run open-weight AI models, ones whose trained
+        settings are publicly released, on their own data. Palo Alto is paying $4.5 billion in
+        its own shares and expects the deal to close in the quarter to April 2027, subject to
+        regulatory clearance. Applied Compute’s chief executive, Yash Patil, will become Palo
+        Alto’s co-chief AI officer.
+      </p>
+      <p>
+        On the call, Palo Alto said Applied Compute had passed $100 million of annualised
+        revenue within 18 months of being founded, and that it aimed for the business to add $1
+        billion of recurring revenue by its 2029 financial year. It also said:
+      </p>
+      <ul>
+        <li>
+          the deal would lower its operating margin by up to 1 percentage point in the year to
+          July 2027 and up to 2 points the year after, before returning to the current 29% to
+          30%;
+        </li>
+        <li>
+          its capital spending for the business would total less than $3 billion through its
+          2030 financial year;
+        </li>
+        <li>
+          the price includes about $500 million of cash and prepaid computing that Applied
+          Compute holds.
+        </li>
+      </ul>
+
+      <h2>Cash</h2>
+      <p>
+        Palo Alto generated $1,929 million of cash from operations in the quarter, up from
+        $1,771 million. Its adjusted free cash flow, which takes out spending on equipment and
+        adds back payments linked to its acquisitions, was $1,937 million, 56.2% of revenue
+        against 69.2% a year earlier. It bought back no shares in the quarter.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Palo Alto closed at $339.92 on 18 November, before its results. On 19 November it opened
+        at $355.81, rose as high as $370.00, and closed at $361.73, up 6.4%. The S&P 500 fell
+        2.0% and the Nasdaq Composite 2.3% the same day. In after-hours trading on 18 November
+        the shares had been up about 9%, at $368.70, and rival cybersecurity companies rose with
+        them, CrowdStrike by 5%, Zscaler by 3% and Fortinet by 2%, Reuters reported.
+      </p>
+      <p>
+        The shares had already risen 9.9% on 18 November, before the results, a day the Nasdaq
+        Composite rose 0.4%. Over the two days they rose 17.0%, from $309.29 to $361.73.
+      </p>
+      <p>
+        That leaves them 13.9% below their record close of $419.91 on 6 October 2026, and up
+        96.4% since the end of 2025.
+      </p>
+
+      <h2>How Palo Alto shares usually react to results</h2>
+      <p>
+        We measured all 43 of Palo Alto’s results releases before this one, from February 2016
+        to September 2026. Palo Alto usually reports after the market closes, so we compared the
+        close on the next day with the close on the day it reported. Two were released before
+        the market opened, in June 2018 and November 2020; for those we compared that day’s
+        close with the day before.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>6.8%</strong>.
+        </li>
+        <li>
+          29 of the 43 moved the shares by 5% or more, and 12 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>28.4%</strong> in February 2024.
+        </li>
+        <li>
+          The largest rise was <strong>18.6%</strong> in August 2021.
+        </li>
+        <li>
+          The shares rose after 23 of the 43 and fell after 20.
+        </li>
+        <li>
+          The four results before this one all moved the shares down, most recently by{' '}
+          <strong>6.8%</strong> in February, <strong>5.6%</strong> in June and{' '}
+          <strong>9.3%</strong> in September 2026. The last rise was <strong>3.1%</strong> in
+          August 2025.
+        </li>
+      </ul>
+      <p>
+        So a 6.4% rise is close to Palo Alto’s usual move, a little below the middle one: 23 of
+        the 43 earlier results moved the shares more.
+      </p>
+
+      <h2>How far Palo Alto has fallen before</h2>
+      <p>
+        Palo Alto’s shares have fallen 30% or more seven times since July 2012, when they began
+        trading and our price history starts. These are measured from a record close to the
+        lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Palo Alto has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'September 2012', c1: 'June 2013', c2: '−44.9%', c3: 'February 2014' } },
+          { cells: { c0: 'July 2015', c1: 'April 2017', c2: '−45.2%', c3: 'May 2018' } },
+          { cells: { c0: 'September 2018', c1: 'November 2018', c2: '−30.8%', c3: 'February 2019' } },
+          { cells: { c0: 'February 2019', c1: 'March 2020', c2: '−48.0%', c3: 'July 2020' } },
+          { cells: { c0: 'April 2022', c1: 'January 2023', c2: '−36.0%', c3: 'May 2023' } },
+          { cells: { c0: 'February 2024', c1: 'February 2024', c2: '−30.5%', c3: 'October 2024' } },
+          { cells: { c0: 'October 2025', c1: 'February 2026', c2: '−36.0%', c3: 'May 2026' } },
+        ]}
+      />
+      <p>
+        All seven got back to their record. The longest took almost three years, from July 2015
+        to May 2018. The fall that began in February 2024 came mostly from one day: the 28.4%
+        drop after its results that month.
+      </p>
+      <p>
+        Since the record close on 6 October 2026 the shares have fallen as low as $309.29, on 17
+        November, 26.3% below it, not far enough to count as one of these falls. That is a
+        record of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The deals.</strong> Whether CyberArk and Chronosphere keep growing once the
+          year-earlier figures include them, from February 2027.
+        </li>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the year lands between $14.52
+          billion and $14.57 billion.
+        </li>
+        <li>
+          <strong>The margin.</strong> How far component costs weigh on the gross margin, as
+          Palo Alto expects all year.
+        </li>
+        <li>
+          <strong>Applied Compute.</strong> Whether the deal closes in the quarter to April
+          2027, and how much it adds and costs.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Palo Alto’s own, or analysts’ as
+        reported, not ours. The share-price history is a record of what happened before, not a
+        prediction. This article is general information and does not take into account your
+        objectives, financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
