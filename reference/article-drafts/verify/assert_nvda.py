@@ -36,6 +36,7 @@ REL, CFO, Q2, K8, PR, BOARD = ("q3-release.txt", "q3-cfo.txt", "q2-release.txt",
                               "board-statement.txt")
 HUANG, CNBC, NOV18, NBC, FOOL = ("news-cnbc-huang.txt", "news-cnbc.txt", "news-cnbc-nov18.txt", "news-nbc-live.txt",
                                  "news-fool.txt")
+REUTERS = "news-reuters-sec.txt"  # added 21 Nov: the SEC update
 
 # raw figures, $ millions unless noted (release, statement of income / cash flows / balance sheet)
 REV, REV0, OI, OI0, NI, NI0 = 115844, 57006, 77520, 36010, 65287, 31910
@@ -99,6 +100,13 @@ SOURCES = {
     NBC: ["does not intend to reinstate"],
     FOOL: ["closed at $150.96, down 2.89%",
            "investors are now watching succession uncertainty and China-related regulatory scrutiny"],
+    REUTERS: ["Nov 20 (Reuters) - The US Securities and Exchange Commission is probing Nvidia's",
+              "said two people briefed on the matter",
+              "The Wall Street Journal on Tuesday reported that the SEC was probing Nvidia",
+              "SEC enforcement staff are scrutinizing potential accounting issues at the company",
+              "A spokesperson for the SEC declined to comment. Spokespeople for Nvidia did not immediately respond",
+              "Reuters could not immediately determine when the SEC opened its inquiry or exactly what potential accounting issues the watchdog is examining",
+              "Investigations are not evidence of wrongdoing"],
 }
 
 
@@ -209,7 +217,7 @@ def measured(f: dict, need) -> None:  # noqa: ANN001
     MON = "January February March April May June July August September October November December".split()
     my = lambda d: f"{MON[int(d[5:7]) - 1]} {d[:4]}"  # noqa: E731
     adj = dict(zip(f["full_dates"], f["full_closes"]))
-    with open(SRC / "nasdaq-hist-NVDA-20261119.csv", encoding="utf-8") as fh:
+    with open(SRC / "nasdaq-hist-NVDA-20261121.csv", encoding="utf-8") as fh:
         lines = list(fh)
     meta = lines[0]
     nq = {r["date"]: r for r in csv.DictReader(x for x in lines if not x.startswith("#"))}
@@ -231,11 +239,28 @@ def measured(f: dict, need) -> None:  # noqa: ANN001
     nx = {r[0]: float(r[3]) for r in full["^IXIC"]}
     spx, ndq = pct(sx["2026-11-18"], sx["2026-11-17"]), pct(nx["2026-11-18"], nx["2026-11-17"])
     assert spx < 0 < ndq
-    need("answer", f"Its shares still fell {abs(mv):.1f}% the next day, its first results since Jensen Huang resigned as chief executive, leaving them {abs(pct(c18, rec)):.1f}% below their October record")
+    c13, c19, c20 = c["11/13/2026"], c["11/19/2026"], c["11/20/2026"]
+    need("answer", f"Its shares still fell {abs(mv):.1f}% the next day, its first results since Jensen Huang resigned as chief executive. On 20 November, the day Reuters reported that the SEC is examining Nvidia's accounting, they fell {abs(pct(c20, c19)):.1f}%, leaving them {abs(pct(c20, rec)):.1f}% below their October record")
+    need("s since", f"**Since then:** down {abs(pct(c20, c19)):.1f}% on 20 November, the day Reuters reported that the US markets regulator is examining Nvidia's accounting. That left the shares {abs(pct(c20, rec)):.1f}% below their October record")
+    need("sec 1", "On 17 November, the day of the results, The Wall Street Journal reported that the US Securities and Exchange Commission, the country's markets regulator, was investigating Nvidia, Reuters reported. On 20 November Reuters reported, citing two people briefed on the matter")
+    need("sec days", f"Nvidia closed at ${c19:.2f} on 19 November, down {abs(pct(c19, c18)):.1f}%, and at ${c20:.2f} on 20 November, down {abs(pct(c20, c19)):.1f}%. Over the week it fell {abs(pct(c20, c13)):.1f}%, from ${c13:.2f} on 13 November")
+    # "worst week since October 2008": Friday-to-Friday closes (last close of each week) in our dividend-adjusted
+    # history, frozen to 18 Nov; this week's fall is from Nasdaq's traded closes (no dividend went ex in between)
+    import datetime as dt
+    wk: dict = {}
+    for d_, v in zip(f["full_dates"], f["full_closes"]):
+        wk[dt.date.fromisoformat(d_).isocalendar()[:2]] = (d_, v)
+    ws = sorted(wk.values())
+    rets = [(ws[i][0], pct(ws[i][1], ws[i - 1][1])) for i in range(1, len(ws))]
+    this_week = pct(c20, c13)
+    worse = [(d_, r) for d_, r in rets if r <= this_week]
+    assert worse and worse[-1][0] == "2008-10-10", worse[-3:]
+    need("worst", "its worst week since October 2008 in our price history")
+    need("now", f"It is now {abs(pct(c20, rec)):.1f}% below its October record, and down {abs(pct(c20, ye)):.1f}% since the end of 2025")
     need("s move", f"**The shares:** down {abs(mv):.1f}% on 18 November, to ${c18:.2f}, after opening higher")
     r18 = nq["11/18/2026"]
     need("day", f"Nvidia closed at ${c17:.2f} on 17 November. On 18 November it opened at ${float(r18['open']):.2f}, up {pct(float(r18['open']), c17):.1f}%, then fell as low as ${float(r18['low']):.2f} and closed at ${c18:.2f}, down {abs(mv):.1f}%. The S&P 500 fell {abs(spx):.1f}% and the Nasdaq Composite rose {ndq:.1f}% the same day")
-    need("since", f"Nvidia closed at ${c06:.2f} on 6 November, the last trading day before the board's statement, and has fallen {abs(pct(c18, c06)):.1f}% since. It is {abs(pct(c18, rec)):.1f}% below its record close of ${rec:.2f}, set on 6 October 2026, and down {abs(pct(c18, ye)):.1f}% since the end of 2025")
+    need("since", f"Nvidia closed at ${c06:.2f} on 6 November, the last trading day before the board's statement. By the close on 18 November it had fallen {abs(pct(c18, c06)):.1f}% since then, was {abs(pct(c18, rec)):.1f}% below its record close of ${rec:.2f}, set on 6 October 2026, and was down {abs(pct(c18, ye)):.1f}% since the end of 2025")
     m = [r["move"] for r in before]
     n = len(before)
     assert n == 43 and before[0]["release"] == "2016-02-17" and before[-1]["release"] == "2026-08-26"
@@ -262,9 +287,9 @@ def measured(f: dict, need) -> None:  # noqa: ANN001
     mon = lambda a, b: (int(b[:4]) - int(a[:4])) * 12 + int(b[5:7]) - int(a[5:7])  # noqa: E731
     slow = max(falls, key=lambda e: mon(e["peak_date"], e["recovery_date"]))
     assert slow["peak_date"][:4] == "2007" and mon(slow["peak_date"], slow["recovery_date"]) == 102  # 8.5 years
-    cur = abs(pct(c18, rec))
-    assert cur < min(abs(e["depth_pct"]) for e in falls)
-    need("back", f"All seven got back to their record. The slowest, the fall that began in 2007, took eight and a half years. The current fall, {cur:.1f}% from the October record, is smaller than any of them so far")
+    cur, least = abs(pct(c20, rec)), min(abs(e["depth_pct"]) for e in falls)
+    assert cur < least and least - cur < 5  # "but only just"
+    need("back", f"All seven got back to their record. The slowest, the fall that began in 2007, took eight and a half years. The current fall, {cur:.1f}% from the October record at the close on 20 November, is still smaller than any of them, but only just: the smallest of the seven was {least:.1f}%")
 
 
 if __name__ == "__main__":
