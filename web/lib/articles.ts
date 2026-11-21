@@ -1282,9 +1282,9 @@ export const ARTICLES = [
     searchTitle: 'Nvidia Q3 FY27 earnings: revenue doubled. Why shares fell',
     question: 'Why did Nvidia’s shares fall when its revenue doubled?',
     answer:
-      'Nvidia’s revenue more than doubled to $115.8 billion in the quarter to October 2026, and it forecast $130 billion for the next. Its shares still fell 2.9% the next day, its first results since Jensen Huang resigned as chief executive, leaving them 36.9% below their October record.',
+      'Nvidia’s revenue more than doubled to $115.8 billion in the quarter to October 2026. Its shares still fell 2.9% the next day, then 14.0% on 20 November, the day Reuters reported an SEC inquiry into its accounting, leaving them 47.5% below their October record.',
     summary:
-      'Nvidia’s quarter from its own filings: revenue up 103%, a $130 billion forecast with an extra week in it, a new chief executive, and a 2.9% fall.',
+      'Nvidia’s quarter from its own filings: revenue up 103%, a $130 billion forecast with an extra week, a new chief executive, and an SEC inquiry.',
     kind: 'commentary',
     deck: [
       'Revenue more than doubled, in Nvidia’s first results since its chief executive resigned. ',
@@ -1302,11 +1302,11 @@ export const ARTICLES = [
     facts: [
       { value: '$115.8B', label: 'revenue' },
       { value: '+4.2%', label: 'next quarter’s forecast, per week' },
-      { value: '−36.9%', label: 'below the October record' },
+      { value: '−47.5%', label: 'below the October record, 20 Nov' },
     ],
     region: 'United States',
     published: '2026-11-19',
-    reviewed: '2026-11-19',
+    reviewed: '2026-11-21',
     minutes: 7,
   },
   {

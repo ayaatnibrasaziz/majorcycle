@@ -10192,6 +10192,11 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           <strong>The shares:</strong> down 2.9% on 18 November, to $150.96, after opening
           higher.
         </li>
+        <li>
+          <strong>Since then:</strong> down 14.0% on 20 November, the day Reuters reported that
+          the US markets regulator is examining Nvidia’s accounting. That left the shares 47.5% below
+          their October record.
+        </li>
       </ul>
       <p>
         All figures are in US dollars.
@@ -10345,8 +10350,25 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
       <p>
         The fall started before the results. Nvidia closed at $186.64 on 6 November, the last
-        trading day before the board’s statement, and has fallen 19.1% since. It is 36.9% below
-        its record close of $239.24, set on 6 October 2026, and down 19.1% since the end of
+        trading day before the board’s statement. By the close on 18 November it had fallen 19.1%
+        since then, was 36.9% below its record close of $239.24, set on 6 October 2026, and was
+        down 19.1% since the end of 2025.
+      </p>
+
+      <h2>Since the results: the SEC</h2>
+      <p>
+        On 17 November, the day of the results, The Wall Street Journal reported that the US
+        Securities and Exchange Commission, the country’s markets regulator, was investigating
+        Nvidia, Reuters reported. On 20 November Reuters reported, citing two people briefed on
+        the matter, that “SEC enforcement staff are scrutinizing potential accounting issues at
+        the company”. It said the SEC declined to comment and Nvidia did not immediately
+        respond, and that it could not determine which accounting issues are being examined.
+        Reuters added that investigations “are not evidence of wrongdoing”.
+      </p>
+      <p>
+        Nvidia closed at $145.98 on 19 November, down 3.3%, and at $125.53 on 20 November, down
+        14.0%. Over the week it fell 22.9%, from $162.85 on 13 November: its worst week since
+        October 2008 in our price history. It is now 47.5% below its October record, and down 32.7% since the end of
         2025.
       </p>
 
@@ -10405,8 +10427,9 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       />
       <p>
         All seven got back to their record. The slowest, the fall that began in 2007, took eight
-        and a half years. The current fall, 36.9% from the October record, is smaller than any
-        of them so far. That is a record of what happened, not a guide to what will happen.
+        and a half years. The current fall, 47.5% from the October record at the close on 20
+        November, is still smaller than any of them, but only just: the smallest of the seven was
+        51.9%. That is a record of what happened, not a guide to what will happen.
       </p>
 
       <h2>What comes next</h2>
@@ -10424,6 +10447,9 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         </li>
         <li>
           <strong>The investigation.</strong> What the independent committee finds.
+        </li>
+        <li>
+          <strong>The SEC.</strong> What, if anything, the regulator’s investigation finds.
         </li>
         <li>
           <strong>Cash.</strong> Whether what customers owe Nvidia keeps growing faster than its

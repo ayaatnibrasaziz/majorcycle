@@ -42,9 +42,9 @@
 
 ## The answer, shown under the heading
 
-Nvidia's revenue more than doubled to $115.8 billion in the quarter to October 2026, and it forecast $130 billion for
-the next. Its shares still fell 2.9% the next day, its first results since Jensen Huang resigned as chief executive,
-leaving them 36.9% below their October record.
+Nvidia's revenue more than doubled to $115.8 billion in the quarter to October 2026. Its shares still fell 2.9% the next
+day, then 14.0% on 20 November, the day Reuters reported an SEC inquiry into its accounting, leaving them 47.5% below
+their October record.
 
 ---
 
@@ -64,6 +64,8 @@ for the three months to 25 October 2026, the third quarter of its financial year
 - **The new boss:** the results were Nvidia's first since Jensen Huang, who co-founded it, resigned as chief
   executive on 12 November. Its finance chief, Colette Kress, is running it until a successor is found.
 - **The shares:** down 2.9% on 18 November, to $150.96, after opening higher.
+- **Since then:** down 14.0% on 20 November, the day Reuters reported that the US markets regulator is examining
+  Nvidia's accounting. That left the shares 47.5% below their October record.
 
 All figures are in US dollars.
 
@@ -161,8 +163,21 @@ The Motley Fool reported that investors "are now watching succession uncertainty
 scrutiny".
 
 The fall started before the results. Nvidia closed at $186.64 on 6 November, the last trading day before the board's
-statement, and has fallen 19.1% since. It is 36.9% below its record close of $239.24, set on 6 October 2026, and
-down 19.1% since the end of 2025.
+statement. By the close on 18 November it had fallen 19.1% since then, was 36.9% below its record close of $239.24,
+set on 6 October 2026, and was down 19.1% since the end of 2025.
+
+### Since the results: the SEC
+
+On 17 November, the day of the results, The Wall Street Journal reported that the US Securities and Exchange
+Commission, the country's markets regulator, was investigating Nvidia, Reuters reported. On 20 November Reuters
+reported, citing two people briefed on the matter, that "SEC enforcement staff are scrutinizing potential accounting
+issues at the company". It said the SEC declined to comment and Nvidia did not immediately respond, and that it could
+not determine which accounting issues are being examined. Reuters added that investigations "are not evidence of
+wrongdoing".
+
+Nvidia closed at $145.98 on 19 November, down 3.3%, and at $125.53 on 20 November, down 14.0%. Over the week it fell
+22.9%, from $162.85 on 13 November: its worst week since October 2008 in our price history. It is now 47.5% below its
+October record, and down 32.7% since the end of 2025.
 
 ### How Nvidia shares usually react to results
 
@@ -194,8 +209,8 @@ back to it:
 | November 2021 | October 2022 | −66.3% | May 2023 |
 
 All seven got back to their record. The slowest, the fall that began in 2007, took eight and a half years. The
-current fall, 36.9% from the October record, is smaller than any of them so far. That is a record of what happened,
-not a guide to what will happen.
+current fall, 47.5% from the October record at the close on 20 November, is still smaller than any of them, but
+only just: the smallest of the seven was 51.9%. That is a record of what happened, not a guide to what will happen.
 
 ### What comes next
 
@@ -203,6 +218,7 @@ not a guide to what will happen.
 - **The margin.** Whether the gross margin lands between 71.0% and 72.0%, as Nvidia expects.
 - **The chief executive.** Who the board names, and when.
 - **The investigation.** What the independent committee finds.
+- **The SEC.** What, if anything, the regulator's investigation finds.
 - **Cash.** Whether what customers owe Nvidia keeps growing faster than its revenue.
 
 ### What this cannot tell you
