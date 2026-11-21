@@ -240,7 +240,7 @@ def measured(f: dict, need) -> None:  # noqa: ANN001
     spx, ndq = pct(sx["2026-11-18"], sx["2026-11-17"]), pct(nx["2026-11-18"], nx["2026-11-17"])
     assert spx < 0 < ndq
     c13, c19, c20 = c["11/13/2026"], c["11/19/2026"], c["11/20/2026"]
-    need("answer", f"Its shares still fell {abs(mv):.1f}% the next day, its first results since Jensen Huang resigned as chief executive. On 20 November, the day Reuters reported that the SEC is examining Nvidia's accounting, they fell {abs(pct(c20, c19)):.1f}%, leaving them {abs(pct(c20, rec)):.1f}% below their October record")
+    need("answer", f"Its shares still fell {abs(mv):.1f}% the next day, then {abs(pct(c20, c19)):.1f}% on 20 November, the day Reuters reported an SEC inquiry into its accounting, leaving them {abs(pct(c20, rec)):.1f}% below their October record")
     need("s since", f"**Since then:** down {abs(pct(c20, c19)):.1f}% on 20 November, the day Reuters reported that the US markets regulator is examining Nvidia's accounting. That left the shares {abs(pct(c20, rec)):.1f}% below their October record")
     need("sec 1", "On 17 November, the day of the results, The Wall Street Journal reported that the US Securities and Exchange Commission, the country's markets regulator, was investigating Nvidia, Reuters reported. On 20 November Reuters reported, citing two people briefed on the matter")
     need("sec days", f"Nvidia closed at ${c19:.2f} on 19 November, down {abs(pct(c19, c18)):.1f}%, and at ${c20:.2f} on 20 November, down {abs(pct(c20, c19)):.1f}%. Over the week it fell {abs(pct(c20, c13)):.1f}%, from ${c13:.2f} on 13 November")

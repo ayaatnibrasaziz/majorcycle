@@ -42,10 +42,9 @@
 
 ## The answer, shown under the heading
 
-Nvidia's revenue more than doubled to $115.8 billion in the quarter to October 2026, and it forecast $130 billion for
-the next. Its shares still fell 2.9% the next day, its first results since Jensen Huang resigned as chief executive.
-On 20 November, the day Reuters reported that the SEC is examining Nvidia's accounting, they fell 14.0%, leaving them
-47.5% below their October record.
+Nvidia's revenue more than doubled to $115.8 billion in the quarter to October 2026. Its shares still fell 2.9% the next
+day, then 14.0% on 20 November, the day Reuters reported an SEC inquiry into its accounting, leaving them 47.5% below
+their October record.
 
 ---
 
