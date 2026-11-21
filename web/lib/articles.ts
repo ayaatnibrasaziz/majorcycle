@@ -1307,6 +1307,39 @@ export const ARTICLES = [
     reviewed: '2026-11-19',
     minutes: 7,
   },
+  {
+    slug: 'palo-alto-networks-q1-fy27-results',
+    title: 'Palo Alto Networks’ results for the quarter to October 2026, explained',
+    searchTitle: 'Palo Alto Q1 FY27 earnings: revenue up 39%, shares up 6.4%',
+    question: 'How much of Palo Alto Networks’ 39% growth did it buy?',
+    answer:
+      'Palo Alto Networks’ revenue rose 39% to $3,445 million in the quarter to October 2026, much of it from two companies it bought this year, and it raised its forecast for the year. Its shares rose 6.4% the next day, on a day the S&P 500 fell 2.0%.',
+    summary:
+      'Palo Alto Networks’ quarter from its own filings: revenue up 39%, much of it bought, profit down, a higher forecast, a $4.5B AI deal, and a 6.4% rise.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 39%, much of it from two companies Palo Alto bought this year. ',
+      { strong: 'It raised its forecast, and its shares rose.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+39%' },
+      ', operating income ',
+      { figure: '−69%' },
+      ', shares ',
+      { figure: '+6.4%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$3,445M', label: 'revenue' },
+      { value: '$24.1B', label: 'paid for CyberArk and Chronosphere' },
+      { value: '$4.5B', label: 'in shares for Applied Compute, an AI start-up' },
+    ],
+    region: 'United States',
+    published: '2026-11-20',
+    reviewed: '2026-11-20',
+    minutes: 10,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
