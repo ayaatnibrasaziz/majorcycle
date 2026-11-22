@@ -1373,7 +1373,7 @@ export const ARTICLES = [
     region: 'United States',
     published: '2026-11-23',
     reviewed: '2026-11-23',
-    minutes: 5,
+    minutes: 8,
     ctaText:
       'Every stock we track in the US, Australia and Canada has its own page, with its price history, how far it sits below its high, and its fundamentals.',
   },
@@ -1408,7 +1408,7 @@ export const ARTICLES = [
     region: 'United States',
     published: '2026-11-24',
     reviewed: '2026-11-24',
-    minutes: 6,
+    minutes: 8,
     ctaText:
       'Every stock we track in the US, Australia and Canada has its own page, with its price history, how far it sits below its high, and its fundamentals.',
   },

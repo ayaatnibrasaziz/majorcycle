@@ -627,14 +627,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         larger than the difference between countries.
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
         caption="Australian groups compared. Miners are counted as the companies that actually mine, which is not the same as the Basic Materials sector."
         columns={[
-          { key: 'group', label: 'Group', width: '14.8%' },
-          { key: 'n', label: 'Companies', numeric: true, width: '16.2%' },
-          { key: 'wait', label: 'Typical wait', numeric: true, width: '18.4%' },
-          { key: 'back', label: 'Back within 5 years', numeric: true, width: '27.8%' },
-          { key: 'now', label: 'Still down today', numeric: true, width: '22.8%' },
+          { key: 'group', label: 'Group' },
+          { key: 'n', label: 'Companies', numeric: true },
+          { key: 'wait', label: 'Typical wait', numeric: true },
+          { key: 'back', label: 'Back within 5 years', numeric: true },
+          { key: 'now', label: 'Still down today', numeric: true },
         ]}
         rows={[
           {
@@ -1623,13 +1623,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         against that number.
       </p>
       <DataTable
-        minWidth="597px"
+        wrapHeaders
+        minWidth="520px"
         caption="Q3 2026 against Netflix’s own July forecast"
         columns={[
-          { key: 'what', label: 'Measure', width: '31.4%' },
-          { key: 'fc', label: 'Netflix’s forecast (July)', numeric: true, width: '35%' },
-          { key: 'rep', label: 'Reported', numeric: true, width: '14.7%' },
-          { key: 'yago', label: 'A year earlier', numeric: true, width: '18.9%' },
+          { key: 'what', label: 'Measure', width: '31%' },
+          { key: 'fc', label: 'Netflix’s forecast (July)', numeric: true, width: '23%' },
+          { key: 'rep', label: 'Reported', numeric: true, width: '23%' },
+          { key: 'yago', label: 'A year earlier', numeric: true, width: '23%' },
         ]}
         rows={[
           { cells: { what: 'Revenue', fc: '$12.86B', rep: '$12.87B', yago: '$11.51B' } },
@@ -1648,13 +1649,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
       <p>By region, measured in US dollars, every part of the business grew by more than 10%:</p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Netflix’s revenue by region, third quarter of 2026"
         columns={[
-          { key: 'region', label: 'Region', width: '30.3%' },
-          { key: 'rev', label: 'Revenue', numeric: true, width: '13%' },
-          { key: 'g', label: 'Growth', numeric: true, width: '12.8%' },
-          { key: 'fx', label: 'Growth without currency moves', numeric: true, width: '43.9%' },
+          { key: 'region', label: 'Region', width: '37%' },
+          { key: 'rev', label: 'Revenue', numeric: true, width: '19%' },
+          { key: 'g', label: 'Growth', numeric: true, width: '19%' },
+          { key: 'fx', label: 'Growth without currency moves', numeric: true, width: '25%' },
         ]}
         rows={[
           { cells: { region: 'US and Canada', rev: '$5.63B', g: '11%', fx: '11%' } },
@@ -1955,7 +1957,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         results, so the cleanest test of a quarter is against that range.
       </p>
       <DataTable
-        minWidth="577px"
+        minWidth="612px"
         caption="The quarter against Meta’s own forecast"
         columns={[
           { key: 'c0', label: 'Measure', width: '32.6%' },
@@ -2196,7 +2198,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         back to it:
       </p>
       <DataTable
-        minWidth="503px"
+        minWidth="534px"
         caption="How far Meta has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '24.5%' },
@@ -2302,7 +2304,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         a year earlier.
       </p>
       <DataTable
-        minWidth="543px"
+        minWidth="576px"
         caption="The quarter against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '34.6%' },
@@ -2471,7 +2473,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        minWidth="503px"
+        minWidth="534px"
         caption="How far Tesla has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '24.5%' },
@@ -2707,7 +2709,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         NEXTDC has had seven falls of 20% or more before this one, and came back from all seven:
       </p>
       <DataTable
-        minWidth="467px"
+        minWidth="496px"
         caption="How far NEXTDC has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.5%' },
@@ -2905,13 +2907,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Here is what each bank said about those three things in its latest results:
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Why would interest rates matter to a bank?"
         columns={[
-          { key: 'c0', label: 'Bank', width: '12%' },
-          { key: 'c1', label: 'Benefit from higher rates', width: '35.8%' },
-          { key: 'c2', label: 'Pressure', width: '25.7%' },
-          { key: 'c3', label: 'Money set aside', width: '26.5%' },
+          { key: 'c0', label: 'Bank', width: '40%' },
+          { key: 'c1', label: 'Benefit from higher rates', width: '20%' },
+          { key: 'c2', label: 'Pressure', width: '20%' },
+          { key: 'c3', label: 'Money set aside', width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'CBA (year to June 2026)', c1: '“higher earnings on replicating portfolio and capital hedges”', c2: '“largely offset by lower lending margins”', c3: 'Loan impairment expense up 9% to $788 million; “arrears rose in some consumer portfolios”' } },
@@ -2929,12 +2932,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         over the 2022–23 rises:
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Why would interest rates matter to a bank?"
         columns={[
-          { key: 'c0', label: 'CBA’s results for', width: '27.5%' },
-          { key: 'c1', label: 'Net interest margin', numeric: true, width: '28.3%' },
-          { key: 'c2', label: 'Cash rate at the end of the period', numeric: true, width: '44.2%' },
+          { key: 'c0', label: 'CBA’s results for', width: '40%' },
+          { key: 'c1', label: 'Net interest margin', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Cash rate at the end of the period', numeric: true, width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Year to June 2022', c1: '1.90%', c2: '0.85%' } },
@@ -2986,7 +2990,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         while the market as a whole fell 1.53%. So the banks fell, and by more than the market.
       </p>
       <DataTable
-        minWidth="476px"
+        minWidth="505px"
         caption="What we measured, and how to read the table"
         columns={[
           { key: 'c0', label: 'Decision', width: '20.7%' },
@@ -3113,7 +3117,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Now compare the days each bank reported its own results:
       </p>
       <DataTable
-        minWidth="545px"
+        minWidth="578px"
         caption="This year, bank by bank"
         columns={[
           { key: 'c0', label: 'Bank', width: '13.5%' },
@@ -3310,7 +3314,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         recast the year-earlier figures to match.
       </p>
       <DataTable
-        minWidth="561px"
+        minWidth="595px"
         caption="The quarter against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '39.9%' },
@@ -3338,7 +3342,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        minWidth="561px"
+        minWidth="595px"
         caption="Where the revenue came from"
         columns={[
           { key: 'c0', label: 'Measure', width: '39.9%' },
@@ -3419,7 +3423,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Microsoft gives two measures of its spending, and they tell different stories:
       </p>
       <DataTable
-        minWidth="561px"
+        minWidth="595px"
         caption="Where the money is going"
         columns={[
           { key: 'c0', label: 'Measure', width: '39.9%' },
@@ -3549,7 +3553,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         back to it:
       </p>
       <DataTable
-        minWidth="461px"
+        minWidth="489px"
         caption="How far Microsoft has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.8%' },
@@ -3645,7 +3649,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="579px"
+        minWidth="614px"
         caption="The quarter against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '38.7%' },
@@ -3671,7 +3675,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        minWidth="579px"
+        minWidth="614px"
         caption="Where the revenue came from"
         columns={[
           { key: 'c0', label: 'Measure', width: '38.7%' },
@@ -3848,7 +3852,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="503px"
+        minWidth="534px"
         caption="How far Alphabet has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '24.5%' },
@@ -3942,13 +3946,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="604px"
+        wrapHeaders
+        minWidth="520px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '37.1%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '27.6%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.6%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '14.7%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$24.4B', c2: '$17.6B', c3: '+39%' } },
@@ -4005,7 +4010,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         the last five quarters:
       </p>
       <DataTable
-        minWidth="419px"
+        minWidth="445px"
         caption="Selling more, for less"
         columns={[
           { key: 'c0', label: 'Quarter', width: '36.9%' },
@@ -4028,13 +4033,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Mounjaro, Zepbound and the rest</h2>
       <DataTable
-        minWidth="604px"
+        wrapHeaders
+        minWidth="520px"
         caption="Mounjaro, Zepbound and the rest"
         columns={[
-          { key: 'c0', label: 'Measure', width: '37.1%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '27.6%' },
-          { key: 'c2', label: 'A year earlier', width: '20.6%' },
-          { key: 'c3', label: 'Change', width: '14.7%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Mounjaro', c1: '$10.7B', c2: '$6.5B', c3: '+65%' } },
@@ -4202,7 +4208,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        minWidth="461px"
+        minWidth="489px"
         caption="How far Lilly has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.8%' },
@@ -4290,13 +4296,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="593px"
+        wrapHeaders
+        minWidth="520px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '35.9%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '28.1%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '21%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '15%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$16.5B', c2: '$13.7B', c3: '+21%' } },
@@ -4321,7 +4328,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         that range:
       </p>
       <DataTable
-        minWidth="517px"
+        minWidth="549px"
         caption="Against Intel’s own July forecast"
         columns={[
           { key: 'c0', label: 'Measure', width: '41.1%' },
@@ -4342,13 +4349,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Data centres up, PCs down</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Data centres up, PCs down"
         columns={[
-          { key: 'c0', label: 'Quarter', width: '24.5%' },
-          { key: 'c1', label: 'Data centre and AI', numeric: true, width: '26.7%' },
-          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '35%' },
-          { key: 'c3', label: 'PCs (CCPG)', numeric: true, width: '13.8%' },
+          { key: 'c0', label: 'Quarter', width: '40%' },
+          { key: 'c1', label: 'Data centre and AI', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'PCs (CCPG)', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Third quarter 2025', c1: '$4.1B', c2: '−1%', c3: '$8.5B' } },
@@ -4374,12 +4382,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Why the forecast disappointed</h2>
       <DataTable
-        minWidth="588px"
+        wrapHeaders
+        minWidth="520px"
         caption="Why the forecast disappointed"
         columns={[
-          { key: 'c0', label: 'Measure', width: '36.1%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '28.4%' },
-          { key: 'c2', label: 'Fourth-quarter forecast', numeric: true, width: '35.5%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Fourth-quarter forecast', numeric: true, width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$16.5B', c2: '$15.0B to $16.0B' } },
@@ -4517,7 +4526,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far Intel has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -4607,7 +4616,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="492px"
+        minWidth="522px"
         caption="The quarter against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '27.7%' },
@@ -4654,7 +4663,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>AWS speeds up, cash runs out</h2>
       <DataTable
-        minWidth="555px"
+        minWidth="589px"
         caption="AWS speeds up, cash runs out"
         columns={[
           { key: 'c0', label: 'Quarter', width: '27.8%' },
@@ -4722,7 +4731,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        minWidth="495px"
+        minWidth="525px"
         caption="The outlook"
         columns={[
           { key: 'c0', label: 'Measure', width: '27.4%' },
@@ -4778,7 +4787,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="465px"
+        minWidth="493px"
         caption="How far Amazon has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.6%' },
@@ -4870,13 +4879,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '20.3%' },
-          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '43.8%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.3%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '15.6%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$11.0B', c2: '$2.3B', c3: '+378%' } },
@@ -4943,13 +4953,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Not every customer grew. Sandisk’s revenue split three ways:
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Who paid more, and who bought less"
         columns={[
-          { key: 'c0', label: 'Measure', width: '20.3%' },
-          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '43.8%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.3%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '15.6%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Data centre', c1: '$4.8B', c2: '$0.3B', c3: '' } },
@@ -5006,7 +5017,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        minWidth="547px"
+        minWidth="580px"
         caption="The outlook"
         columns={[
           { key: 'c0', label: 'Measure', width: '38.9%' },
@@ -5061,7 +5072,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        minWidth="460px"
+        minWidth="488px"
         caption="How far Sandisk has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '27%' },
@@ -5151,13 +5162,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '22%' },
-          { key: 'c1', label: 'Three months to 30 September 2026', numeric: true, width: '47.3%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.3%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '10.4%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 30 September 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Subscription revenue', c1: '$3.99B', c2: '$3.30B', c3: '+21%' } },
@@ -5200,12 +5212,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the profit went</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Where the profit went"
         columns={[
-          { key: 'c0', label: 'Measure', width: '34.3%' },
-          { key: 'c1', label: 'Three months to 30 September 2026', width: '47.3%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '18.4%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 30 September 2026', width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Amortisation of purchased intangibles', c1: '$198M', c2: '$33M' } },
@@ -5242,7 +5255,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The forecast that moved the shares</h2>
       <DataTable
-        minWidth="384px"
+        minWidth="408px"
         caption="The forecast that moved the shares"
         columns={[
           { key: 'c0', label: 'Quarter to', width: '32.9%' },
@@ -5343,7 +5356,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         adjusted for the share split:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far ServiceNow has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -5430,13 +5443,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The year against a year earlier</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The year against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '33.8%' },
-          { key: 'c1', label: 'Year to 30 September 2026', numeric: true, width: '35.5%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.3%' },
-          { key: 'c3', label: 'Change', width: '10.4%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Year to 30 September 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Net interest income', c1: '$18,512M', c2: '$17,398M', c3: '+6.4%' } },
@@ -5504,13 +5518,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         on the measures that leave out the write-down:
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The second half on its own"
         columns={[
-          { key: 'c0', label: 'Measure', width: '20.2%' },
-          { key: 'c1', label: 'Six months to Sep 2026', numeric: true, width: '31.5%' },
-          { key: 'c2', label: 'Six months to Mar 2026', numeric: true, width: '32.7%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '15.6%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Six months to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Six months to Mar 2026', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Cash earnings, without the write-down', c1: '$3,502M', c2: '$3,588M', c3: '−2.4%' } },
@@ -5598,7 +5613,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         got back to it, counting dividends:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far NAB has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -5687,13 +5702,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '32.9%' },
-          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '35%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20.3%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '11.8%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$13,377M', c2: '$9,246M', c3: '+45%' } },
@@ -5713,12 +5729,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the growth came from</h2>
       <DataTable
-        minWidth="580px"
+        wrapHeaders
+        minWidth="520px"
         caption="Where the growth came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '28%' },
-          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '37%' },
-          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '35%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Data Center', c1: '$8.5B', c2: '+97%' } },
@@ -5850,7 +5867,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         are measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="460px"
+        minWidth="488px"
         caption="How far AMD has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '27%' },
@@ -5940,7 +5957,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        minWidth="576px"
+        minWidth="611px"
         caption="The quarter against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '25.6%' },
@@ -5966,12 +5983,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the growth came from</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Where the growth came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '32%' },
-          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '35%' },
-          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '33%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'iPhone', c1: '$57,583M', c2: '+17%' } },
@@ -6021,12 +6039,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The forecast</h2>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="The forecast"
         columns={[
-          { key: 'c0', label: 'Measure', width: '21.4%' },
-          { key: 'c1', label: 'December 2025 quarter', numeric: true, width: '32.4%' },
-          { key: 'c2', label: 'Apple’s forecast for December 2026', width: '46.2%' },
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'December 2025 quarter', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Apple’s forecast for December 2026', width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$143,756M', c2: 'Up 7% to 10%' } },
@@ -6093,7 +6112,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it, counting dividends:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far Apple has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -6187,7 +6206,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         These figures leave out Notable Items, as Westpac reports them.
       </p>
       <DataTable
-        minWidth="554px"
+        minWidth="588px"
         caption="The year against a year earlier"
         columns={[
           { key: 'c0', label: 'Measure', width: '40.4%' },
@@ -6250,7 +6269,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Profit before bad debts and tax, by division:
       </p>
       <DataTable
-        minWidth="492px"
+        minWidth="522px"
         caption="Where its profit came from"
         columns={[
           { key: 'c0', label: 'Division', width: '32.8%' },
@@ -6343,7 +6362,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         got back to it, counting dividends:
       </p>
       <DataTable
-        minWidth="463px"
+        minWidth="491px"
         caption="How far Westpac has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.8%' },
@@ -6467,7 +6486,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        minWidth="562px"
+        minWidth="596px"
         caption="Where the revenue came from"
         columns={[
           { key: 'c0', label: 'Measure', width: '20.9%' },
@@ -6655,7 +6674,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="462px"
+        minWidth="490px"
         caption="How far Palantir has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.7%' },
@@ -6922,7 +6941,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it:
       </p>
       <DataTable
-        minWidth="464px"
+        minWidth="492px"
         caption="How far Arm has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '27.1%' },
@@ -7172,7 +7191,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it:
       </p>
       <DataTable
-        minWidth="465px"
+        minWidth="493px"
         caption="How far Astera has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '27.2%' },
@@ -7306,7 +7325,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the sales came from</h2>
       <DataTable
-        minWidth="544px"
+        minWidth="577px"
         caption="Where the sales came from"
         columns={[
           { key: 'c0', label: 'Jul–Sep 2026', width: '32.5%' },
@@ -7340,7 +7359,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="The outlook"
         columns={[
           { key: 'c0', label: '2026, at constant exchange rates', width: '62.4%' },
@@ -7429,7 +7448,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         close before the shares got back to it, counting dividends:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far Novo has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -7547,7 +7566,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         show where it went:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="Revenue up 46%, profit down 86%: why both are true"
         columns={[
           { key: 'c0', label: 'Six months to 30 September, NZ$', width: '58.3%' },
@@ -7605,7 +7624,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Xero quotes its growth three ways, and they give three different answers for revenue:
       </p>
       <DataTable
-        minWidth="479px"
+        minWidth="508px"
         caption="Three ways to measure the growth"
         columns={[
           { key: 'c0', label: 'Revenue growth, six months to 30 September 2026', width: '85.4%' },
@@ -7625,7 +7644,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the growth came from</h2>
       <DataTable
-        minWidth="555px"
+        minWidth="589px"
         caption="Where the growth came from"
         columns={[
           { key: 'c0', label: 'Six months to 30 September 2026', width: '48.7%' },
@@ -7783,7 +7802,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         price-only:
       </p>
       <DataTable
-        minWidth="463px"
+        minWidth="491px"
         caption="How far Xero has fallen"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.8%' },
@@ -7877,7 +7896,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>What Life360 reported</h2>
       <DataTable
-        minWidth="472px"
+        minWidth="501px"
         caption="What Life360 reported"
         columns={[
           { key: 'c0', label: 'Three months to 30 September, US$', width: '61.1%' },
@@ -8012,7 +8031,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         This was the fifth results day in a row that Life360’s ASX shares fell:
       </p>
       <DataTable
-        minWidth="516px"
+        minWidth="547px"
         caption="Five results days, five falls"
         columns={[
           { key: 'c0', label: 'Results day', width: '27.2%' },
@@ -8074,7 +8093,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         2019. Life360 does not pay a dividend, so these are price-only:
       </p>
       <DataTable
-        minWidth="475px"
+        minWidth="504px"
         caption="How far Life360 has fallen"
         columns={[
           { key: 'c0', label: 'From the close of', width: '34%' },
@@ -8209,7 +8228,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         <strong>The money lent</strong> in the September quarter:
       </p>
       <DataTable
-        minWidth="465px"
+        minWidth="493px"
         caption="What the ABS reported on 11 November"
         columns={[
           { key: 'c0', label: 'Borrowers', width: '30.4%' },
@@ -8403,7 +8422,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         publishes every bank’s loans each month. At 30 September 2026:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="What it means for the banks"
         columns={[
           { key: 'c0', label: 'Bank', width: '18.5%' },
@@ -8505,7 +8524,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         November 2026).
       </p>
       <DataTable
-        minWidth="395px"
+        minWidth="419px"
         caption="What bank shares did in past housing downturns"
         columns={[
           { key: 'c0', label: 'Downturn', width: '25.5%' },
@@ -8717,14 +8736,15 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         businesses bought or sold, so it shows the growth of the business it already had.
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="Where the growth came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '17.9%' },
-          { key: 'c1', label: 'Revenue', numeric: true, width: '13%' },
-          { key: 'c2', label: 'Reported change', numeric: true, width: '24.7%' },
-          { key: 'c3', label: 'Organic change', numeric: true, width: '23.9%' },
-          { key: 'c4', label: 'Volume change', numeric: true, width: '20.5%' },
+          { key: 'c0', label: 'Measure', width: '28%' },
+          { key: 'c1', label: 'Revenue', numeric: true, width: '18%' },
+          { key: 'c2', label: 'Reported change', numeric: true, width: '18%' },
+          { key: 'c3', label: 'Organic change', numeric: true, width: '18%' },
+          { key: 'c4', label: 'Volume change', numeric: true, width: '18%' },
         ]}
         rows={[
           { cells: { c0: 'North America', c1: '$5,386M', c2: '+3%', c3: '+3%', c4: '0%' } },
@@ -8898,7 +8918,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far Coca-Cola has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -9222,7 +9242,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far McDonald’s has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -9489,7 +9509,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="463px"
+        minWidth="491px"
         caption="How far Applied has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.8%' },
@@ -9645,7 +9665,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to July:
       </p>
       <DataTable
-        minWidth="508px"
+        minWidth="539px"
         caption="The orders"
         columns={[
           { key: 'c0', label: 'Orders, change on a year earlier', width: '55.2%' },
@@ -9782,7 +9802,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="462px"
+        minWidth="490px"
         caption="How far Cisco has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.7%' },
@@ -10037,7 +10057,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="462px"
+        minWidth="490px"
         caption="How far Nebius has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.7%' },
@@ -10330,7 +10350,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="464px"
+        minWidth="492px"
         caption="How far Nvidia has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.6%' },
@@ -10476,12 +10496,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         The results call gave the same split by business:
       </p>
       <DataTable
-        minWidth="614px"
+        wrapHeaders
+        minWidth="520px"
         caption="How much of the growth was bought"
         columns={[
-          { key: 'c0', label: 'Business', width: '19.8%' },
-          { key: 'c1', label: 'Growth as reported', width: '28.8%' },
-          { key: 'c2', label: 'As if the deals had always been in place', width: '51.4%' },
+          { key: 'c0', label: 'Business', width: '40%' },
+          { key: 'c1', label: 'Growth as reported', width: '30%' },
+          { key: 'c2', label: 'As if the deals had always been in place', width: '30%' },
         ]}
         rows={[
           { cells: { c0: 'Network and AI security', c1: '+20%', c2: 'No separate figure given' } },
@@ -10666,7 +10687,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         lowest close before the shares got back to it:
       </p>
       <DataTable
-        minWidth="459px"
+        minWidth="487px"
         caption="How far Palo Alto has fallen before"
         columns={[
           { key: 'c0', label: 'Record close', width: '26.9%' },
@@ -10765,7 +10786,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <h2>How the first two days went</h2>
       <DataTable
         wrapHeaders
-        minWidth="530px"
+        minWidth="560px"
         caption="ANT’s first two days of trading, from Nasdaq’s price history"
         columns={[
           { key: 'c0', label: 'When', width: '40%' },
@@ -11056,7 +11077,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The first day</h2>
       <DataTable
-        minWidth="475px"
+        minWidth="504px"
         caption="Every US IPO since 2008 in Renaissance Capital’s 25 largest, and Anthropic"
         columns={[
           { key: 'c0', label: 'Company (year)', width: '34.1%' },
@@ -11090,7 +11111,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The day the first-day close gave way</h2>
       <DataTable
-        minWidth="510px"
+        minWidth="541px"
         caption="The date each one first closed below its first-day close"
         columns={[
           { key: 'c0', label: 'Company', width: '22.8%' },
@@ -11122,7 +11143,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>What happened next</h2>
       <DataTable
-        minWidth="532px"
+        minWidth="564px"
         caption="Both measured from the first-day close"
         columns={[
           { key: 'c0', label: 'Company', width: '21.9%' },
