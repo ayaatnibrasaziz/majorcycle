@@ -10832,13 +10832,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
       <DataTable
         wrapHeaders
-        minWidth="260px"
+        minWidth="555px"
         caption="Every release date in Anthropic’s prospectus"
         columns={[
-          { key: 'c0', label: '#', width: '7%' },
-          { key: 'c1', label: 'Earliest date the shares can be sold', width: '49%' },
-          { key: 'c2', label: 'Up to', numeric: true, width: '18%' },
-          { key: 'c3', label: 'Worth at $88.91', numeric: true, width: '26%' },
+          { key: 'c0', label: '#', width: '6.3%' },
+          { key: 'c1', label: 'Earliest date the shares can be sold', width: '58.1%' },
+          { key: 'c2', label: 'Up to', numeric: true, width: '10.9%' },
+          { key: 'c3', label: 'Worth at $88.91', numeric: true, width: '24.7%' },
         ]}
         rows={[
           { cells: { c0: '1', c1: 'First trading day, 19 November 2026', c2: '315M', c3: '$28.0B' } },
@@ -10942,12 +10942,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
       <DataTable
         wrapHeaders
-        minWidth="260px"
+        minWidth="280px"
         caption="The concurrent private placement, by buyer"
         columns={[
-          { key: 'c0', label: 'Buyer', width: '40%' },
-          { key: 'c1', label: 'Shares', numeric: true, width: '30%' },
-          { key: 'c2', label: 'At $83.00', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Buyer', width: '32.6%' },
+          { key: 'c1', label: 'Shares', numeric: true, width: '39.1%' },
+          { key: 'c2', label: 'At $83.00', numeric: true, width: '28.3%' },
         ]}
         rows={[
           { cells: { c0: 'Google', c1: '120,481,927', c2: '$10.0B' } },
