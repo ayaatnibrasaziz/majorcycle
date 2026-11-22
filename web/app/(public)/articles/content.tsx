@@ -1957,14 +1957,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         results, so the cleanest test of a quarter is against that range.
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="612px"
         caption="The quarter against Meta’s own forecast"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Meta’s forecast (July)', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Reported', numeric: true, width: '20%' },
-          { key: 'c3', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '32.6%' },
+          { key: 'c1', label: 'Meta’s forecast (July)', numeric: true, width: '32.7%' },
+          { key: 'c2', label: 'Reported', numeric: true, width: '15.2%' },
+          { key: 'c3', label: 'A year earlier', numeric: true, width: '19.5%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$61–64B', c2: '$64.60B', c3: '$51.24B' } },
@@ -2199,14 +2198,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="534px"
         caption="How far Meta has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '24.5%' },
+          { key: 'c1', label: 'Lowest point', width: '32.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '12.3%' },
+          { key: 'c3', label: 'Back at the record', width: '30.8%' },
         ]}
         rows={[
           { cells: { c0: 'May 2012', c1: 'September 2012', c2: '−53.6%', c3: 'August 2013' } },
@@ -2306,14 +2304,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         a year earlier.
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="576px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '34.6%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30.7%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '23%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11.7%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$28.05B', c2: '$28.10B', c3: '−0.2%' } },
@@ -2476,14 +2473,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="534px"
         caption="How far Tesla has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '24.5%' },
+          { key: 'c1', label: 'Lowest point', width: '32.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '12.3%' },
+          { key: 'c3', label: 'Back at the record', width: '30.8%' },
         ]}
         rows={[
           { cells: { c0: 'November 2010', c1: 'February 2011', c2: '−38.5%', c3: 'March 2012' } },
@@ -2713,14 +2709,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         NEXTDC has had seven falls of 20% or more before this one, and came back from all seven:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="496px"
         caption="How far NEXTDC has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.5%' },
+          { key: 'c1', label: 'Lowest point', width: '26.7%' },
+          { key: 'c2', label: 'Fall', width: '13.7%' },
+          { key: 'c3', label: 'Back at the record', width: '33.1%' },
         ]}
         rows={[
           { cells: { c0: 'Jul 2011', c1: 'Sep 2011', c2: '−30.5%', c3: 'Mar 2012' } },
@@ -2995,15 +2990,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         while the market as a whole fell 1.53%. So the banks fell, and by more than the market.
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="505px"
         caption="What we measured, and how to read the table"
         columns={[
-          { key: 'c0', label: 'Decision', width: '28%' },
-          { key: 'c1', label: 'Rise', numeric: true, width: '18%' },
-          { key: 'c2', label: 'New cash rate', numeric: true, width: '18%' },
-          { key: 'c3', label: 'Big four banks', numeric: true, width: '18%' },
-          { key: 'c4', label: 'ASX 200', numeric: true, width: '18%' },
+          { key: 'c0', label: 'Decision', width: '20.7%' },
+          { key: 'c1', label: 'Rise', numeric: true, width: '11.3%' },
+          { key: 'c2', label: 'New cash rate', numeric: true, width: '27.1%' },
+          { key: 'c3', label: 'Big four banks', numeric: true, width: '27.9%' },
+          { key: 'c4', label: 'ASX 200', numeric: true, width: '13%' },
         ]}
         rows={[
           { cells: { c0: '3 May 2022', c1: '+0.25', c2: '0.35%', c3: '−0.35%', c4: '−0.42%' } },
@@ -3123,14 +3117,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Now compare the days each bank reported its own results:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="578px"
         caption="This year, bank by bank"
         columns={[
-          { key: 'c0', label: 'Bank', width: '40%' },
-          { key: 'c1', label: 'Results day', width: '20%' },
-          { key: 'c2', label: 'Share price that day', numeric: true, width: '20%' },
-          { key: 'c3', label: 'ASX 200 that day', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Bank', width: '13.5%' },
+          { key: 'c1', label: 'Results day', width: '29.9%' },
+          { key: 'c2', label: 'Share price that day', numeric: true, width: '32.4%' },
+          { key: 'c3', label: 'ASX 200 that day', numeric: true, width: '24.2%' },
         ]}
         rows={[
           { cells: { c0: 'ANZ', c1: 'Fri 1 May 2026 (half-year results)', c2: '−2.84%', c3: '+0.74%' } },
@@ -3321,14 +3314,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         recast the year-earlier figures to match.
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="595px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '39.9%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '26.5%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '22.2%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11.4%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$92.3B', c2: '$77.7B', c3: '+18.8%' } },
@@ -3350,14 +3342,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="595px"
         caption="Where the revenue came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '39.9%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '26.5%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '22.2%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11.4%' },
         ]}
         rows={[
           { cells: { c0: 'Azure', c1: '$33.2B', c2: '$22.4B', c3: '+48.2%' } },
@@ -3432,14 +3423,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Microsoft gives two measures of its spending, and they tell different stories:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="595px"
         caption="Where the money is going"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '39.9%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '26.5%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '22.2%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11.4%' },
         ]}
         rows={[
           { cells: { c0: 'Cash spent on property and equipment', c1: '$39.4B', c2: '$19.4B', c3: '+103%' } },
@@ -3563,14 +3553,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="489px"
         caption="How far Microsoft has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.8%' },
+          { key: 'c1', label: 'Lowest point', width: '26.2%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.6%' },
         ]}
         rows={[
           { cells: { c0: 'October 1987', c1: 'October 1987', c2: '−50.3%', c3: 'October 1989' } },
@@ -3660,14 +3649,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="614px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '38.7%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '28.8%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '21.5%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$127.6B', c2: '$102.3B', c3: '+24.7%' } },
@@ -3687,14 +3675,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="614px"
         caption="Where the revenue came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '38.7%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '28.8%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '21.5%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '11%' },
         ]}
         rows={[
           { cells: { c0: 'Google Search & other', c1: '$63.4B', c2: '$56.6B', c3: '+12.0%' } },
@@ -3865,14 +3852,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="534px"
         caption="How far Alphabet has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '24.5%' },
+          { key: 'c1', label: 'Lowest point', width: '32.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '12.3%' },
+          { key: 'c3', label: 'Back at the record', width: '30.8%' },
         ]}
         rows={[
           { cells: { c0: 'January 2006', c1: 'March 2006', c2: '−28.5%', c3: 'October 2006' } },
@@ -4024,14 +4010,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         the last five quarters:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="445px"
         caption="Selling more, for less"
         columns={[
-          { key: 'c0', label: 'Quarter', width: '40%' },
-          { key: 'c1', label: 'Revenue growth', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Volume', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Price', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Quarter', width: '36.9%' },
+          { key: 'c1', label: 'Revenue growth', numeric: true, width: '34.8%' },
+          { key: 'c2', label: 'Volume', numeric: true, width: '17.6%' },
+          { key: 'c3', label: 'Price', numeric: true, width: '10.7%' },
         ]}
         rows={[
           { cells: { c0: 'Third quarter 2025', c1: '+54%', c2: '+62%', c3: '−10%' } },
@@ -4223,14 +4208,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="489px"
         caption="How far Lilly has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.8%' },
+          { key: 'c1', label: 'Lowest point', width: '26.2%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.6%' },
         ]}
         rows={[
           { cells: { c0: 'July 1973', c1: 'September 1977', c2: '−60.8%', c3: 'June 1983' } },
@@ -4344,14 +4328,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         that range:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="549px"
         caption="Against Intel’s own July forecast"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Forecast in July', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Actual', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Difference', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '41.1%' },
+          { key: 'c1', label: 'Forecast in July', numeric: true, width: '28%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '13.7%' },
+          { key: 'c3', label: 'Difference', numeric: true, width: '17.2%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$16.3B', c2: '$16.5B', c3: '+$0.2B' } },
@@ -4543,14 +4526,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far Intel has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'November 1980', c1: 'January 1982', c2: '−58.1%', c3: 'April 1983' } },
@@ -4634,14 +4616,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="522px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '27.7%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '33.9%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '25.4%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '13%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$201.9B', c2: '$180.2B', c3: '+12%' } },
@@ -4682,13 +4663,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>AWS speeds up, cash runs out</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="589px"
         caption="AWS speeds up, cash runs out"
         columns={[
-          { key: 'c0', label: 'Quarter', width: '40%' },
-          { key: 'c1', label: 'AWS growth', numeric: true, width: '30%' },
-          { key: 'c2', label: 'Free cash flow, past twelve months', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Quarter', width: '27.8%' },
+          { key: 'c1', label: 'AWS growth', numeric: true, width: '20.5%' },
+          { key: 'c2', label: 'Free cash flow, past twelve months', numeric: true, width: '51.7%' },
         ]}
         rows={[
           { cells: { c0: 'Third quarter 2025', c1: '+20%', c2: '$14.8B' } },
@@ -4751,13 +4731,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="525px"
         caption="The outlook"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Fourth-quarter forecast', numeric: true, width: '30%' },
-          { key: 'c2', label: 'A year earlier', width: '30%' },
+          { key: 'c0', label: 'Measure', width: '27.4%' },
+          { key: 'c1', label: 'Fourth-quarter forecast', numeric: true, width: '44.6%' },
+          { key: 'c2', label: 'A year earlier', width: '28%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$240.0B to $247.0B', c2: 'growth of 12% to 16%' } },
@@ -4808,14 +4787,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="493px"
         caption="How far Amazon has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.6%' },
+          { key: 'c1', label: 'Lowest point', width: '26.8%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.3%' },
         ]}
         rows={[
           { cells: { c0: 'July 1998', c1: 'September 1998', c2: '−47.7%', c3: 'November 1998' } },
@@ -5039,13 +5017,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="580px"
         caption="The outlook"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Second-quarter forecast', numeric: true, width: '30%' },
-          { key: 'c2', label: 'First quarter', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Measure', width: '38.9%' },
+          { key: 'c1', label: 'Second-quarter forecast', numeric: true, width: '40.9%' },
+          { key: 'c2', label: 'First quarter', numeric: true, width: '20.2%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$12.2B to $12.6B', c2: '$11.0B' } },
@@ -5095,14 +5072,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="488px"
         caption="How far Sandisk has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '27%' },
+          { key: 'c1', label: 'Lowest point', width: '26%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.6%' },
         ]}
         rows={[
           { cells: { c0: 'March 2025', c1: 'April 2025', c2: '−47.5%', c3: 'September 2025' } },
@@ -5279,13 +5255,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The forecast that moved the shares</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="408px"
         caption="The forecast that moved the shares"
         columns={[
-          { key: 'c0', label: 'Quarter to', width: '40%' },
-          { key: 'c1', label: 'ServiceNow’s forecast', numeric: true, width: '30%' },
-          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Quarter to', width: '32.9%' },
+          { key: 'c1', label: 'ServiceNow’s forecast', numeric: true, width: '51.8%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '15.3%' },
         ]}
         rows={[
           { cells: { c0: 'December 2025', c1: '19%', c2: '21%' } },
@@ -5381,14 +5356,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         adjusted for the share split:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far ServiceNow has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'December 2015', c1: 'February 2016', c2: '−47.6%', c3: 'January 2017' } },
@@ -5639,14 +5613,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         got back to it, counting dividends:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far NAB has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'April 1999', c1: 'February 2000', c2: '−30.8%', c3: 'November 2000' } },
@@ -5894,14 +5867,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         are measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="488px"
         caption="How far AMD has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '27%' },
+          { key: 'c1', label: 'Lowest point', width: '26%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.6%' },
         ]}
         rows={[
           { cells: { c0: 'November 1980', c1: 'September 1981', c2: '−66.5%', c3: 'January 1983' } },
@@ -5985,14 +5957,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The quarter against a year earlier</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="611px"
         caption="The quarter against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '25.6%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '37.3%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '21.7%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '15.4%' },
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$114,477M', c2: '$102,466M', c3: '+12%' } },
@@ -6141,14 +6112,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it, counting dividends:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far Apple has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'December 1980', c1: 'July 1982', c2: '−69.4%', c3: 'January 1983' } },
@@ -6236,14 +6206,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         These figures leave out Notable Items, as Westpac reports them.
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="588px"
         caption="The year against a year earlier"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', width: '20%' },
+          { key: 'c0', label: 'Measure', width: '40.4%' },
+          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '25.6%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '22.5%' },
+          { key: 'c3', label: 'Change', width: '11.5%' },
         ]}
         rows={[
           { cells: { c0: 'Net interest income', c1: '$19,687M', c2: '$19,473M', c3: '+1%' } },
@@ -6300,14 +6269,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Profit before bad debts and tax, by division:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="522px"
         caption="Where its profit came from"
         columns={[
-          { key: 'c0', label: 'Division', width: '40%' },
-          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Division', width: '32.8%' },
+          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '28.8%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '25.4%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '13%' },
         ]}
         rows={[
           { cells: { c0: 'Consumer', c1: '$3,616M', c2: '$3,437M', c3: '+5%' } },
@@ -6394,14 +6362,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         got back to it, counting dividends:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="491px"
         caption="How far Westpac has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.8%' },
+          { key: 'c1', label: 'Lowest point', width: '26.5%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.4%' },
         ]}
         rows={[
           { cells: { c0: 'February 1990', c1: 'October 1992', c2: '−42.8%', c3: 'December 1993' } },
@@ -6519,14 +6486,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the revenue came from</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="596px"
         caption="Where the revenue came from"
         columns={[
-          { key: 'c0', label: 'Measure', width: '40%' },
-          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
-          { key: 'c2', label: 'On a year earlier', numeric: true, width: '20%' },
-          { key: 'c3', label: 'On the quarter before', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Measure', width: '20.9%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20.1%' },
+          { key: 'c2', label: 'On a year earlier', numeric: true, width: '26.8%' },
+          { key: 'c3', label: 'On the quarter before', numeric: true, width: '32.2%' },
         ]}
         rows={[
           { cells: { c0: 'US commercial', c1: '$984M', c2: '+148%', c3: '+29%' } },
@@ -6708,14 +6674,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="490px"
         caption="How far Palantir has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.7%' },
+          { key: 'c1', label: 'Lowest point', width: '26.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.5%' },
         ]}
         rows={[
           { cells: { c0: 'November 2020', c1: 'December 2020', c2: '−22.5%', c3: 'January 2021' } },
@@ -6976,14 +6941,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="492px"
         caption="How far Arm has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '27.1%' },
+          { key: 'c1', label: 'Lowest point', width: '26.2%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.4%' },
         ]}
         rows={[
           { cells: { c0: 'September 2023', c1: 'October 2023', c2: '−24.7%', c3: 'November 2023' } },
@@ -7227,14 +7191,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="493px"
         caption="How far Astera has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '27.2%' },
+          { key: 'c1', label: 'Lowest point', width: '26.2%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.3%' },
         ]}
         rows={[
           { cells: { c0: 'March 2024', c1: 'April 2024', c2: '−24.1%', c3: 'April 2024' } },
@@ -7362,13 +7325,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the sales came from</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="577px"
         caption="Where the sales came from"
         columns={[
-          { key: 'c0', label: 'Jul–Sep 2026', width: '40%' },
-          { key: 'c1', label: 'DKK', numeric: true, width: '30%' },
-          { key: 'c2', label: 'Growth at constant exchange rates', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Jul–Sep 2026', width: '32.5%' },
+          { key: 'c1', label: 'DKK', numeric: true, width: '12.8%' },
+          { key: 'c2', label: 'Growth at constant exchange rates', numeric: true, width: '54.7%' },
         ]}
         rows={[
           { cells: { c0: 'US Operations', c1: '41,880M', c2: '+1%' } },
@@ -7397,13 +7359,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>The outlook</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="The outlook"
         columns={[
-          { key: 'c0', label: '2026, at constant exchange rates', width: '40%' },
-          { key: 'c1', label: 'In August', numeric: true, width: '30%' },
-          { key: 'c2', label: 'Now', numeric: true, width: '30%' },
+          { key: 'c0', label: '2026, at constant exchange rates', width: '62.4%' },
+          { key: 'c1', label: 'In August', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Now', numeric: true, width: '17.6%' },
         ]}
         rows={[
           { cells: { c0: 'Adjusted sales growth', c1: '0% to −6%', c2: '−2% to +2%' } },
@@ -7487,14 +7448,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         close before the shares got back to it, counting dividends:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far Novo has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'September 1983', c1: 'October 1987', c2: '−71.3%', c3: 'February 1991' } },
@@ -7606,14 +7566,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         show where it went:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="Revenue up 46%, profit down 86%: why both are true"
         columns={[
-          { key: 'c0', label: 'Six months to 30 September, NZ$', width: '40%' },
-          { key: 'c1', label: '2025', width: '20%' },
-          { key: 'c2', label: '2026', width: '20%' },
-          { key: 'c3', label: 'Change', width: '20%' },
+          { key: 'c0', label: 'Six months to 30 September, NZ$', width: '58.3%' },
+          { key: 'c1', label: '2025', width: '13.9%' },
+          { key: 'c2', label: '2026', width: '13.9%' },
+          { key: 'c3', label: 'Change', width: '13.9%' },
         ]}
         rows={[
           { cells: { c0: 'Operating income', c1: '137.1M', c2: '124.5M', c3: '−12.6M' } },
@@ -7665,12 +7624,11 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         Xero quotes its growth three ways, and they give three different answers for revenue:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="508px"
         caption="Three ways to measure the growth"
         columns={[
-          { key: 'c0', label: 'Revenue growth, six months to 30 September 2026', width: '50%' },
-          { key: 'c1', label: 'Measure', numeric: true, width: '50%' },
+          { key: 'c0', label: 'Revenue growth, six months to 30 September 2026', width: '85.4%' },
+          { key: 'c1', label: 'Measure', numeric: true, width: '14.6%' },
         ]}
         rows={[
           { cells: { c0: 'Reported', c1: '+46%' } },
@@ -7686,14 +7644,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>Where the growth came from</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="589px"
         caption="Where the growth came from"
         columns={[
-          { key: 'c0', label: 'Six months to 30 September 2026', width: '40%' },
-          { key: 'c1', label: 'Revenue, NZ$', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Growth', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Customers', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Six months to 30 September 2026', width: '48.7%' },
+          { key: 'c1', label: 'Revenue, NZ$', numeric: true, width: '20.9%' },
+          { key: 'c2', label: 'Growth', numeric: true, width: '14.2%' },
+          { key: 'c3', label: 'Customers', numeric: true, width: '16.2%' },
         ]}
         rows={[
           { cells: { c0: 'Australia', c1: '670M', c2: '+23%', c3: '2,192,000' } },
@@ -7845,14 +7802,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         price-only:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="491px"
         caption="How far Xero has fallen"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.8%' },
+          { key: 'c1', label: 'Lowest point', width: '26.5%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.4%' },
         ]}
         rows={[
           { cells: { c0: 'March 2014', c1: 'September 2015', c2: '−71.1%', c3: 'June 2018' } },
@@ -7940,14 +7896,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
 
       <h2>What Life360 reported</h2>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="501px"
         caption="What Life360 reported"
         columns={[
-          { key: 'c0', label: 'Three months to 30 September, US$', width: '40%' },
-          { key: 'c1', label: '2025', width: '20%' },
-          { key: 'c2', label: '2026', width: '20%' },
-          { key: 'c3', label: 'Change', width: '20%' },
+          { key: 'c0', label: 'Three months to 30 September, US$', width: '61.1%' },
+          { key: 'c1', label: '2025', width: '12.7%' },
+          { key: 'c2', label: '2026', width: '12.7%' },
+          { key: 'c3', label: 'Change', width: '13.5%' },
         ]}
         rows={[
           { cells: { c0: 'Subscription revenue', c1: '96.3M', c2: '124.2M', c3: '+29%' } },
@@ -8076,14 +8031,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         This was the fifth results day in a row that Life360’s ASX shares fell:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="547px"
         caption="Five results days, five falls"
         columns={[
-          { key: 'c0', label: 'Results day', width: '40%' },
-          { key: 'c1', label: 'Close the day before', width: '20%' },
-          { key: 'c2', label: 'Close on the day', width: '20%' },
-          { key: 'c3', label: 'Move', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Results day', width: '27.2%' },
+          { key: 'c1', label: 'Close the day before', width: '34.6%' },
+          { key: 'c2', label: 'Close on the day', width: '28.6%' },
+          { key: 'c3', label: 'Move', numeric: true, width: '9.6%' },
         ]}
         rows={[
           { cells: { c0: '11 November 2025', c1: 'A$48.32', c2: 'A$45.80', c3: '−5.2%' } },
@@ -8139,14 +8093,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         2019. Life360 does not pay a dividend, so these are price-only:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="504px"
         caption="How far Life360 has fallen"
         columns={[
-          { key: 'c0', label: 'From the close of', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the high', width: '20%' },
+          { key: 'c0', label: 'From the close of', width: '34%' },
+          { key: 'c1', label: 'Lowest point', width: '25%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13%' },
+          { key: 'c3', label: 'Back at the high', width: '28%' },
         ]}
         rows={[
           { cells: { c0: 'May 2019 (its first day)', c1: 'March 2020', c2: '−69.9%', c3: 'April 2021' } },
@@ -8275,14 +8228,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         <strong>The money lent</strong> in the September quarter:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="493px"
         caption="What the ABS reported on 11 November"
         columns={[
-          { key: 'c0', label: 'Borrowers', width: '40%' },
-          { key: 'c1', label: 'Value', numeric: true, width: '20%' },
-          { key: 'c2', label: 'On June quarter', numeric: true, width: '20%' },
-          { key: 'c3', label: 'On a year ago', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Borrowers', width: '30.4%' },
+          { key: 'c1', label: 'Value', numeric: true, width: '13.3%' },
+          { key: 'c2', label: 'On June quarter', numeric: true, width: '31.8%' },
+          { key: 'c3', label: 'On a year ago', numeric: true, width: '24.5%' },
         ]}
         rows={[
           { cells: { c0: 'All new home loans', c1: '$81.2b', c2: '−15.5%', c3: '−18.1%' } },
@@ -8470,14 +8422,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         publishes every bank’s loans each month. At 30 September 2026:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="What it means for the banks"
         columns={[
-          { key: 'c0', label: 'Bank', width: '40%' },
-          { key: 'c1', label: 'Home loans', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Share of its loans', numeric: true, width: '20%' },
-          { key: 'c3', label: 'To investors', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Bank', width: '18.5%' },
+          { key: 'c1', label: 'Home loans', numeric: true, width: '23.7%' },
+          { key: 'c2', label: 'Share of its loans', numeric: true, width: '35%' },
+          { key: 'c3', label: 'To investors', numeric: true, width: '22.8%' },
         ]}
         rows={[
           { cells: { c0: 'CBA', c1: '$643b', c2: '67.5%', c3: '34.7%' } },
@@ -8573,14 +8524,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         November 2026).
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="419px"
         caption="What bank shares did in past housing downturns"
         columns={[
-          { key: 'c0', label: 'Downturn', width: '40%' },
-          { key: 'c1', label: 'House prices fell', numeric: true, width: '20%' },
-          { key: 'c2', label: 'Big four', numeric: true, width: '20%' },
-          { key: 'c3', label: 'ASX 200', numeric: true, width: '20%' },
+          { key: 'c0', label: 'Downturn', width: '25.5%' },
+          { key: 'c1', label: 'House prices fell', numeric: true, width: '38.2%' },
+          { key: 'c2', label: 'Big four', numeric: true, width: '20.7%' },
+          { key: 'c3', label: 'ASX 200', numeric: true, width: '15.6%' },
         ]}
         rows={[
           { cells: { c0: '2008–09', c1: '6.9%', c2: '−40.9%', c3: '−37.3%' } },
@@ -8968,14 +8918,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far Coca-Cola has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'March 1973', c1: 'October 1974', c2: '−68.2%', c3: 'November 1982' } },
@@ -9293,14 +9242,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far McDonald’s has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'July 1966', c1: 'October 1966', c2: '−45.7%', c3: 'January 1967' } },
@@ -9561,14 +9509,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="491px"
         caption="How far Applied has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.8%' },
+          { key: 'c1', label: 'Lowest point', width: '26.5%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.4%' },
         ]}
         rows={[
           { cells: { c0: 'May 1981', c1: 'March 1982', c2: '−64.6%', c3: 'February 1983' } },
@@ -9718,13 +9665,12 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to July:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="539px"
         caption="The orders"
         columns={[
-          { key: 'c0', label: 'Orders, change on a year earlier', width: '40%' },
-          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '30%' },
-          { key: 'c2', label: 'May–Jul 2026', numeric: true, width: '30%' },
+          { key: 'c0', label: 'Orders, change on a year earlier', width: '55.2%' },
+          { key: 'c1', label: 'Aug–Oct 2026', numeric: true, width: '24%' },
+          { key: 'c2', label: 'May–Jul 2026', numeric: true, width: '20.8%' },
         ]}
         rows={[
           { cells: { c0: 'All product orders', c1: '+21%', c2: '+35%' } },
@@ -9856,14 +9802,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="490px"
         caption="How far Cisco has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.7%' },
+          { key: 'c1', label: 'Lowest point', width: '26.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.5%' },
         ]}
         rows={[
           { cells: { c0: 'July 1990', c1: 'October 1990', c2: '−32.2%', c3: 'October 1990' } },
@@ -10112,14 +10057,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         measured from a record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="490px"
         caption="How far Nebius has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.7%' },
+          { key: 'c1', label: 'Lowest point', width: '26.4%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.4%' },
+          { key: 'c3', label: 'Back at the record', width: '33.5%' },
         ]}
         rows={[
           { cells: { c0: 'January 2025', c1: 'January 2025', c2: '−37.4%', c3: 'February 2025' } },
@@ -10406,14 +10350,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         record close to the lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="492px"
         caption="How far Nvidia has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.6%' },
+          { key: 'c1', label: 'Lowest point', width: '26.7%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.3%' },
+          { key: 'c3', label: 'Back at the record', width: '33.4%' },
         ]}
         rows={[
           { cells: { c0: 'March 2000', c1: 'April 2000', c2: '−53.9%', c3: 'June 2000' } },
@@ -10744,14 +10687,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         lowest close before the shares got back to it:
       </p>
       <DataTable
-        wrapHeaders
-        minWidth="520px"
+        minWidth="487px"
         caption="How far Palo Alto has fallen before"
         columns={[
-          { key: 'c0', label: 'Record close', width: '40%' },
-          { key: 'c1', label: 'Lowest point', width: '20%' },
-          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
-          { key: 'c3', label: 'Back at the record', width: '20%' },
+          { key: 'c0', label: 'Record close', width: '26.9%' },
+          { key: 'c1', label: 'Lowest point', width: '25.9%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '13.5%' },
+          { key: 'c3', label: 'Back at the record', width: '33.7%' },
         ]}
         rows={[
           { cells: { c0: 'September 2012', c1: 'June 2013', c2: '−44.9%', c3: 'February 2014' } },
@@ -10800,6 +10742,564 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         reported, not ours. The share-price history is a record of what happened before, not a
         prediction. This article is general information and does not take into account your
         objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'anthropic-lock-up-dates': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Anthropic, the company behind the Claude AI models, sold shares to the public for the
+        first time on 18 November 2026 and began trading on the Nasdaq as ANT the next day. In
+        short:
+      </p>
+      <ul>
+        <li>
+          <strong>The offering:</strong> 980 million shares at $83.00, raising $81.3 billion,
+          the largest initial public offering on record. It had planned to sell 825 million
+          shares at $70 to $78.
+        </li>
+        <li>
+          <strong>The first two days:</strong> the shares opened at $111.50 and closed the first
+          day at $97.17. On the second day they fell as low as $83.05, five cents above the
+          offer price, and closed at $88.91.
+        </li>
+        <li>
+          <strong>How many shares exist:</strong> 13,219,642,276 after the offering. The 980
+          million sold are about 7.4% of them.
+        </li>
+        <li>
+          <strong>The lock-up:</strong> most of the rest cannot be sold yet. Anthropic’s
+          prospectus lists 23 dates on which more becomes free to sell, starting on the first
+          day of trading.
+        </li>
+        <li>
+          <strong>The next date:</strong> 15 December 2026, when up to 303 million more shares
+          can be sold.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>How the first two days went</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="560px"
+        caption="ANT’s first two days of trading, from Nasdaq’s price history"
+        columns={[
+          { key: 'c0', label: 'When', width: '40%' },
+          { key: 'c1', label: 'Price', numeric: true, width: '14%' },
+          { key: 'c2', label: 'Against the $83.00 offer price', numeric: true, width: '46%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Opening trade, 19 November', c1: '$111.50', c2: '+34.3%' } },
+          { cells: { c0: 'High, 19 November', c1: '$115.10', c2: '+38.7%' } },
+          { cells: { c0: 'Close, 19 November', c1: '$97.17', c2: '+17.1%' } },
+          { cells: { c0: 'Low, 20 November', c1: '$83.05', c2: '+0.1%' } },
+          { cells: { c0: 'Close, 20 November', c1: '$88.91', c2: '+7.1%' } },
+        ]}
+      />
+      <p>
+        The first trade came just before noon in New York. More than 846 million shares changed
+        hands on the first day, CNBC reported, against 522 million on SpaceX’s first day in
+        June. The broader market fell on both days.
+      </p>
+
+      <h2>What a lock-up is</h2>
+      <p>
+        Before a company lists, its staff, founders and investors already own most of its
+        shares. A lock-up is an agreement with the banks running the offering not to sell those
+        shares for a set period, so that they do not all reach the market at once. The US
+        Securities and Exchange Commission’s guide for investors says most lock-ups prevent
+        insiders from selling “for 180 days”, and that “a company’s stock price may drop in
+        anticipation that locked up shares will be sold into the market when the lockup ends”.
+        Anthropic’s ends in stages, and the last of them runs to day 365.
+      </p>
+      <p>
+        The prospectus says about 15.5 billion shares are covered by lock-up agreements with the
+        banks or by similar agreements with Anthropic. That count includes shares still to be
+        issued from staff options and share awards and from convertible notes, which is why it
+        is larger than the 13.2 billion shares that exist today.
+      </p>
+
+      <h2>The 23 dates</h2>
+      <p>
+        This is the table in the prospectus, in the section “Shares Eligible for Future Sale”.
+        Each figure is the most that can be sold from that date, not a forecast of what will be
+        sold. The value uses the close of $88.91 on 20 November, so it moves with the price.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="555px"
+        caption="Every release date in Anthropic’s prospectus"
+        columns={[
+          { key: 'c0', label: '#', width: '6.3%' },
+          { key: 'c1', label: 'Earliest date the shares can be sold', width: '58.1%' },
+          { key: 'c2', label: 'Up to', numeric: true, width: '10.9%' },
+          { key: 'c3', label: 'Worth at $88.91', numeric: true, width: '24.7%' },
+        ]}
+        rows={[
+          { cells: { c0: '1', c1: 'First trading day, 19 November 2026', c2: '315M', c3: '$28.0B' } },
+          { cells: { c0: '2', c1: '15 December 2026 (day 27)', c2: '303M', c3: '$26.9B' } },
+          { cells: { c0: '3', c1: '5 January 2027 (day 48)', c2: '303M', c3: '$26.9B' } },
+          { cells: { c0: '4', c1: '19 January 2027 (day 62)', c2: '353M', c3: '$31.4B' } },
+          { cells: { c0: '5', c1: '2 February 2027 (day 76)', c2: '353M', c3: '$31.4B' } },
+          { cells: { c0: '6', c1: 'Second trading day after the results for 2026', c2: '1.7B', c3: '$151.1B' } },
+          { cells: { c0: '7', c1: '13 days after those results', c2: '480M', c3: '$42.7B' } },
+          { cells: { c0: '8', c1: '27 days after', c2: '480M', c3: '$42.7B' } },
+          { cells: { c0: '9', c1: '41 days after', c2: '480M', c3: '$42.7B' } },
+          { cells: { c0: '10', c1: '55 days after', c2: '480M', c3: '$42.7B' } },
+          { cells: { c0: '11', c1: '69 days after', c2: '480M', c3: '$42.7B' } },
+          { cells: { c0: '12', c1: 'Second trading day after the results for March 2027, or 17 May 2027 (day 180) if earlier', c2: '3.0B', c3: '$266.7B' } },
+          { cells: { c0: '13', c1: '34 days after the March 2027 results', c2: '447M', c3: '$39.7B' } },
+          { cells: { c0: '14', c1: '48 days after', c2: '447M', c3: '$39.7B' } },
+          { cells: { c0: '15', c1: '62 days after', c2: '447M', c3: '$39.7B' } },
+          { cells: { c0: '16', c1: '76 days after', c2: '447M', c3: '$39.7B' } },
+          { cells: { c0: '17', c1: 'Second trading day after the results for June 2027', c2: '558M', c3: '$49.6B' } },
+          { cells: { c0: '18', c1: '27 days after those results', c2: '502M', c3: '$44.6B' } },
+          { cells: { c0: '19', c1: '41 days after', c2: '502M', c3: '$44.6B' } },
+          { cells: { c0: '20', c1: '55 days after', c2: '502M', c3: '$44.6B' } },
+          { cells: { c0: '21', c1: '69 days after', c2: '502M', c3: '$44.6B' } },
+          { cells: { c0: '22', c1: '83 days after', c2: '502M', c3: '$44.6B' } },
+          { cells: { c0: '23', c1: 'Second trading day after the results for September 2027, or 18 November 2027 (day 365) if earlier', c2: '1.9B', c3: '$168.9B' } },
+        ]}
+      />
+      <p>
+        The share counts include Class N shares, which carry no votes and become ordinary Class
+        A shares when they are sold on the market. Only the first five dates are fixed. The
+        other 18 depend on when Anthropic publishes its results, which it has not yet announced;
+        day 180 and day 365 are the latest the two largest can come.
+      </p>
+      <p>
+        The releases start at 6:00am New York time, 10pm the same day in Sydney through the
+        Australian summer.
+      </p>
+
+      <h2>How that compares with what was sold</h2>
+      <ul>
+        <li>
+          <strong>By 2 February 2027,</strong> the five fixed dates add up to as many as 1,627
+          million shares, about 1.7 times the 980 million sold in the offering.
+        </li>
+        <li>
+          <strong>Counting the 980 million already sold,</strong> at most about 2.6 billion
+          shares, about 20% of the 13.2 billion, could be traded by 2 February. That leaves out
+          the banks’ option to buy 147 million more and the 313 million private-placement shares
+          described below, which have their own limits.
+        </li>
+        <li>
+          <strong>Before day 180,</strong> about 3.7 billion shares covered by the 180-day
+          agreements may become eligible for sale, the prospectus says.
+        </li>
+      </ul>
+
+      <h2>Who can sell, and how much</h2>
+      <p>
+        The prospectus sets a different timetable for each group of holders. The percentages are
+        shares of what each holder had locked up:
+      </p>
+      <ul>
+        <li>
+          <strong>Non-founder directors, officers, staff and consultants.</strong> Up to 10%
+          from the first trading day, including the finance chief and chief accounting officer;
+          up to a further 35% two trading days after the results for 2026; the rest at the March
+          2027 results or day 180.
+        </li>
+        <li>
+          <strong>Holders of about 2.7 billion shares.</strong> Up to 6.0% on 15 December and
+          again on 5 January; 7.0% on 19 January and again on 2 February; 12.5% after the
+          results for 2026; 9.5% at each of the five steps after them; the rest at the March
+          2027 results or day 180.
+        </li>
+        <li>
+          <strong>Holders of more than 0.5% of the shares, about 8.0 billion in all.</strong>{' '}
+          Smaller steps over a year: 1.8% on 15 December and 5 January, 2.1% on 19 January and 2
+          February, 3.75% after the results for 2026, 2.85% at each of the five steps after
+          them, 4.2% at the March 2027 results or day 180, then 5.6%, 7.0% and 6.3% in steps
+          after later results. The rest at the September 2027 results or day 365.
+        </li>
+        <li>
+          <strong>The seven co-founders.</strong> Each sold 3,378,378 shares in the offering
+          itself, worth about $280 million each at the offer price. Of the rest, up to 29% from
+          the March 2027 results or day 180, and the remainder at the September 2027 results or
+          day 365. Through a company they own together, they hold 50.1% of the votes.
+        </li>
+      </ul>
+      <p>
+        The prospectus also says the agreements carry “a number of exceptions”, that Goldman
+        Sachs and Morgan Stanley, on behalf of the banks running the offering, may release
+        locked-up shares “in whole or in part at any time”, and that from day 195 (1 June 2027)
+        some holders may hedge up to 20% of their remaining locked-up shares, about 719 million
+        shares in all.
+      </p>
+
+      <h2>The shares outside the table</h2>
+      <p>
+        Alongside the offering, seven technology companies agreed to buy 313,253,007 Class N
+        shares at the offer price, $26.0 billion in all:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="280px"
+        caption="The concurrent private placement, by buyer"
+        columns={[
+          { key: 'c0', label: 'Buyer', width: '32.6%' },
+          { key: 'c1', label: 'Shares', numeric: true, width: '39.1%' },
+          { key: 'c2', label: 'At $83.00', numeric: true, width: '28.3%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Google', c1: '120,481,927', c2: '$10.0B' } },
+          { cells: { c0: 'Nvidia', c1: '120,481,927', c2: '$10.0B' } },
+          { cells: { c0: 'AMD', c1: '30,120,481', c2: '$2.5B' } },
+          { cells: { c0: 'Broadcom', c1: '12,048,192', c2: '$1.0B' } },
+          { cells: { c0: 'Micron', c1: '12,048,192', c2: '$1.0B' } },
+          { cells: { c0: 'Microsoft', c1: '12,048,192', c2: '$1.0B' } },
+          { cells: { c0: 'TSMC', c1: '6,024,096', c2: '$500M' } },
+        ]}
+      />
+      <p>
+        The prospectus says these shares are not covered by the lock-up agreements with the
+        banks. They are “restricted securities”, which cannot be sold on the market until they
+        are registered or qualify for an exemption.
+      </p>
+      <p>
+        Amazon and Google will each hold more than 5% of Anthropic’s shares, the prospectus
+        says: 1,936,452,353 and 1,774,959,745 Class N shares after the offering.
+      </p>
+
+      <h2>What has happened when lock-ups end</h2>
+      <p>
+        The best-known study, by Laura Field and Gordon Hanka in the Journal of Finance in 2001,
+        looked at 1,948 lock-ups. It found “little selling by insiders” while they were in
+        force. When they ended, trading volume rose by 40% for good and the shares fell 1.5% on
+        average over the three days around the expiry, more where the company was backed by
+        venture capital. That is an average across many companies, not a forecast for Anthropic.
+      </p>
+
+      <h2>The other side of the counter</h2>
+      <p>
+        Retail investors received about 15% of the shares, CNBC reported, citing people familiar
+        with the offering, below the roughly 20% Anthropic had expected. Several of the brokers
+        that offered them treat a quick sale as “flipping”: at Robinhood, selling within 30 days
+        can bar a customer from new offerings for 60 days, CNBC reported. Those rules are the
+        brokers’ own, not Anthropic’s.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>15 December 2026.</strong> The second release: up to 303 million shares.
+        </li>
+        <li>
+          <strong>The results for 2026.</strong> Anthropic has not given a date. Two trading
+          days after them, up to 1.7 billion shares become free to sell, the largest single
+          release before the March 2027 results.
+        </li>
+        <li>
+          <strong>17 May 2027 and 18 November 2027.</strong> Day 180 and day 365: the latest the
+          two largest releases can come if results are later.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are the most shares that can be sold on each date, taken from the prospectus. How
+        many holders will sell, and what that does to the price, cannot be known in advance.
+        Directors, officers and large shareholders are also limited by securities rules and the
+        company’s insider-trading policy. This article is general information and does not take
+        into account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'biggest-ipos-before-anthropic': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Anthropic began trading on the Nasdaq on 19 November 2026, after the largest initial
+        public offering on record. Its shares were sold at $83.00, opened at $111.50, closed the
+        first day at $97.17 and the second at $88.91.
+      </p>
+      <p>
+        We looked at what happened to every US IPO since 2008 that ranks among the 25 largest
+        ever, using Renaissance Capital’s table. There are 13 before Anthropic. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>All 13 later closed below their first-day close.</strong> Eight of them did it
+          the very next trading day. Anthropic, the fourteenth, did it on its second day too.
+        </li>
+        <li>
+          <strong>12 of the 13 closed below the price the banks sold them at</strong>, all
+          within a year of listing. Medline is the only one that has not.
+        </li>
+        <li>
+          <strong>Day one did not decide the ending.</strong> Five are above their first-day
+          close today, Visa by 2,745% and Facebook by 1,367%. Eight are below it, Rivian by
+          89.7%.
+        </li>
+      </ul>
+      <p>
+        These are 13 companies, each listed in its own market. The pattern is a record of what
+        happened, not a forecast for Anthropic.
+      </p>
+
+      <h2>How we chose the 13</h2>
+      <p>
+        The list is every US IPO priced from 2008 onwards in Renaissance Capital’s table of the
+        25 largest US IPOs, by the amount raised. We did not add or drop any. Anthropic tops the
+        table at $81.3 billion, ahead of SpaceX’s $75.0 billion in June.
+      </p>
+      <p>
+        Three prices matter on the first day:
+      </p>
+      <ul>
+        <li>
+          <strong>The IPO price</strong> is what the company and its banks charged the investors
+          they allocated shares to, the night before trading began.
+        </li>
+        <li>
+          <strong>The first trade</strong> is the opening price on the first day, set by
+          everyone else.
+        </li>
+        <li>
+          <strong>The first-day close</strong> is the last price that day. Every comparison
+          below starts from it.
+        </li>
+      </ul>
+      <p>
+        Alibaba, Arm and SK hynix sold American depositary shares, so their prices are per
+        depositary share. Visa’s are shown as they were in 2008, before its four-for-one share
+        split in 2015.
+      </p>
+
+      <h2>The first day</h2>
+      <DataTable
+        minWidth="504px"
+        caption="Every US IPO since 2008 in Renaissance Capital’s 25 largest, and Anthropic"
+        columns={[
+          { key: 'c0', label: 'Company (year)', width: '34.1%' },
+          { key: 'c1', label: 'IPO price', numeric: true, width: '17.9%' },
+          { key: 'c2', label: 'First trade', numeric: true, width: '21.7%' },
+          { key: 'c3', label: 'First-day close', numeric: true, width: '26.3%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Visa (2008)', c1: '$44.00', c2: '$59.50', c3: '$56.50' } },
+          { cells: { c0: 'General Motors (2010)', c1: '$33.00', c2: '$35.00', c3: '$34.19' } },
+          { cells: { c0: 'Facebook (2012)', c1: '$38.00', c2: '$42.05', c3: '$38.23' } },
+          { cells: { c0: 'Alibaba (2014)', c1: '$68.00', c2: '$92.70', c3: '$93.89' } },
+          { cells: { c0: 'Uber (2019)', c1: '$45.00', c2: '$42.00', c3: '$41.57' } },
+          { cells: { c0: 'Coupang (2021)', c1: '$35.00', c2: '$63.50', c3: '$49.25' } },
+          { cells: { c0: 'Rivian (2021)', c1: '$78.00', c2: '$106.75', c3: '$100.73' } },
+          { cells: { c0: 'Arm (2023)', c1: '$51.00', c2: '$56.10', c3: '$63.59' } },
+          { cells: { c0: 'Lineage (2024)', c1: '$78.00', c2: '$82.00', c3: '$80.78' } },
+          { cells: { c0: 'Medline (2025)', c1: '$29.00', c2: '$35.00', c3: '$41.00' } },
+          { cells: { c0: 'Cerebras (2026)', c1: '$185.00', c2: '$350.00', c3: '$311.07' } },
+          { cells: { c0: 'SpaceX (2026)', c1: '$135.00', c2: '$150.00', c3: '$160.95' } },
+          { cells: { c0: 'SK hynix (2026)', c1: '$149.00', c2: '$170.00', c3: '$168.01' } },
+          { cells: { c0: 'Anthropic (2026)', c1: '$83.00', c2: '$111.50', c3: '$97.17' }, emphasis: true },
+        ]}
+      />
+      <p>
+        The gap between the IPO price and the first trade goes to whoever was allocated shares
+        at the IPO price. Six first trades were more than 30% above it: Cerebras by 89.2%,
+        Coupang by 81.4%, Rivian by 36.9%, Alibaba by 36.3%, Visa by 35.2% and Anthropic by
+        34.3%. Uber was the only one whose first trade was below its IPO price.
+      </p>
+
+      <h2>The day the first-day close gave way</h2>
+      <DataTable
+        minWidth="541px"
+        caption="The date each one first closed below its first-day close"
+        columns={[
+          { key: 'c0', label: 'Company', width: '22.8%' },
+          { key: 'c1', label: 'First close below its first-day close', alignRight: true, width: '59.8%' },
+          { key: 'c2', label: 'That close', numeric: true, width: '17.4%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Visa', c1: '6 Oct 2008', c2: '$55.38' } },
+          { cells: { c0: 'General Motors', c1: '22 Nov 2010', c2: '$34.08' } },
+          { cells: { c0: 'Facebook', c1: '21 May 2012', c2: '$34.03' } },
+          { cells: { c0: 'Alibaba', c1: '22 Sep 2014', c2: '$89.89' } },
+          { cells: { c0: 'Uber', c1: '13 May 2019', c2: '$37.10' } },
+          { cells: { c0: 'Coupang', c1: '12 Mar 2021', c2: '$48.47' } },
+          { cells: { c0: 'Rivian', c1: '17 Dec 2021', c2: '$97.70' } },
+          { cells: { c0: 'Arm', c1: '15 Sep 2023', c2: '$60.75' } },
+          { cells: { c0: 'Lineage', c1: '23 Sep 2024', c2: '$80.65' } },
+          { cells: { c0: 'Medline', c1: '18 Dec 2025', c2: '$39.50' } },
+          { cells: { c0: 'Cerebras', c1: '15 May 2026', c2: '$279.72' } },
+          { cells: { c0: 'SpaceX', c1: '22 Jun 2026', c2: '$154.60' } },
+          { cells: { c0: 'SK hynix', c1: '13 Jul 2026', c2: '$152.35' } },
+          { cells: { c0: 'Anthropic', c1: '20 Nov 2026', c2: '$88.91' }, emphasis: true },
+        ]}
+      />
+      <p>
+        Eight of the 13 did it the very next trading day, and so did Anthropic. Only three took
+        more than a week: Rivian, on its 26th trading day after the first, Lineage on its 41st
+        and Visa on its 139th.
+      </p>
+
+      <h2>What happened next</h2>
+      <DataTable
+        minWidth="564px"
+        caption="Both measured from the first-day close"
+        columns={[
+          { key: 'c0', label: 'Company', width: '21.9%' },
+          { key: 'c1', label: 'Lowest close in its first year', numeric: true, width: '46.2%' },
+          { key: 'c2', label: 'Close on 20 Nov 2026', numeric: true, width: '31.9%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Visa', c1: '−24.9%', c2: '+2,745%' } },
+          { cells: { c0: 'General Motors', c1: '−42.3%', c2: '+130.2%' } },
+          { cells: { c0: 'Facebook', c1: '−53.6%', c2: '+1,367%' } },
+          { cells: { c0: 'Alibaba', c1: '−35.1%', c2: '−13.6%' } },
+          { cells: { c0: 'Uber', c1: '−64.3%', c2: '+52.7%' } },
+          { cells: { c0: 'Coupang', c1: '−64.6%', c2: '−71.0%' } },
+          { cells: { c0: 'Rivian', c1: '−79.5%', c2: '−89.7%' } },
+          { cells: { c0: 'Arm', c1: '−24.7%', c2: '+139.3%' } },
+          { cells: { c0: 'Lineage', c1: '−49.4%', c2: '−61.4%' } },
+          { cells: { c0: 'Medline', c1: '−22.8%', c2: '−9.7%' } },
+          { cells: { c0: 'Cerebras', c1: '−73.7%', c2: '−73.4%' } },
+          { cells: { c0: 'SpaceX', c1: '−32.7%', c2: '−20.6%' } },
+          { cells: { c0: 'SK hynix', c1: '−38.4%', c2: '−38.4%' } },
+        ]}
+      />
+      <p>
+        Both columns are measured from the first-day close. Medline, Cerebras, SpaceX and SK
+        hynix have traded for less than a year, so their figure is the lowest close so far.
+      </p>
+
+      <h2>Visa: listed into a crisis</h2>
+      <p>
+        Visa priced its IPO at $44 on 18 March 2008, two days after JPMorgan Chase announced it
+        would buy Bear Stearns, with the Federal Reserve agreeing to fund up to $30 billion of
+        Bear Stearns’ less liquid assets. The first day closed at $56.50. The shares first
+        closed below that on 6 October 2008, at $55.38, and closed at $42.42 on 20 January 2009,
+        their lowest close ever and 24.9% below the first-day close. Today they are 2,745% above
+        it.
+      </p>
+
+      <h2>Facebook: the debut that broke</h2>
+      <p>
+        Facebook’s first day went wrong at the opening. The SEC later found that “a design
+        limitation in NASDAQ’s system to match IPO buy and sell orders caused disruptions to the
+        Facebook IPO”, and Nasdaq paid a $10 million penalty, “the largest ever against an
+        exchange”. It had also set aside up to $62 million to compensate trading firms for the
+        failures, under a plan the SEC approved.
+      </p>
+      <p>
+        The shares opened at $42.05, closed the first day at $38.23 and the second at $34.03,
+        below the $38 IPO price. On 16 August 2012, the 91st day, 271,123,815 shares held by
+        early investors became free to sell under Facebook’s prospectus; that day the shares
+        closed at $19.87. On 4 September they closed at $17.73, their lowest, 53.6% below the
+        first-day close. The first close back above $38 came on 2 August 2013, at $38.05, more
+        than 14 months after the listing. Today the shares are 1,367% above their first-day
+        close.
+      </p>
+
+      <h2>Rivian: up 70.8% in four trading days, then down 89.7%</h2>
+      <p>
+        Rivian’s first trade was $106.75, 36.9% above its $78 IPO price, and it closed its first
+        day at $100.73. Four trading days later it closed at $172.01, 70.8% above that. It first
+        closed below its first-day close on 17 December 2021, at $97.70, and below its IPO price
+        on 18 January 2022. Its lowest close in the first year was $20.60, 79.5% below the
+        first-day close, and on 20 November 2026 it closed at $10.33, 89.7% below it.
+      </p>
+
+      <h2>SpaceX: the one still running</h2>
+      <p>
+        SpaceX’s first trade was $150.00, against an IPO price of $135, and it closed its first
+        day at $160.95. Two trading days later it closed at $201.80, its highest close. From
+        there:
+      </p>
+      <ul>
+        <li>
+          <strong>22 June:</strong> first close below its first-day close, at $154.60.
+        </li>
+        <li>
+          <strong>16 July:</strong> first close below its IPO price, at $131.11.
+        </li>
+        <li>
+          <strong>5 August:</strong> its lowest close, $108.27, 32.7% below its first-day close.
+        </li>
+        <li>
+          <strong>5 October:</strong> back above its first-day close, at $171.09.
+        </li>
+        <li>
+          <strong>20 November:</strong> $127.79, 20.6% below its first-day close.
+        </li>
+      </ul>
+      <p>
+        Its prospectus releases the shares under its 180-day lock-up in stages, the last of them
+        on 8 December 2026. Its founder’s shares are locked for 366 days.
+      </p>
+
+      <h2>What came after: regulators and courts</h2>
+      <p>
+        Several of the 13 have a second story behind the share price, involving regulators,
+        courts or a government. These are the outcomes on the record:
+      </p>
+      <ul>
+        <li>
+          <strong>Facebook:</strong> beyond Nasdaq’s penalty, the shareholders’ lawsuit over the
+          IPO was settled for $35 million in cash.
+        </li>
+        <li>
+          <strong>Alibaba:</strong> in January 2015 a paper posted on the website of China’s
+          State Administration for Industry and Commerce referred to a meeting between Alibaba
+          and regulators in July 2014, two months before its listing. Shareholders sued. In
+          April 2019 Alibaba agreed to pay $250 million to settle; the settlement “does not
+          constitute an admission or finding that the claims asserted had any merit”.
+        </li>
+        <li>
+          <strong>Uber:</strong> in 2024 a shareholders’ lawsuit over the IPO documents was
+          settled for $200 million.
+        </li>
+        <li>
+          <strong>Rivian:</strong> in October 2025 Rivian agreed to pay $250 million to settle a
+          lawsuit brought for buyers of its shares between 10 November 2021 and 10 March 2022.
+          It “denies the allegations in the suit”.
+        </li>
+        <li>
+          <strong>Coupang:</strong> a lawsuit over its IPO was dismissed in September 2025.
+        </li>
+        <li>
+          <strong>Lineage:</strong> a lawsuit over its IPO documents was pending in federal
+          court in Michigan at the plaintiffs’ lawyers’ last update, in February 2026.
+        </li>
+        <li>
+          <strong>General Motors:</strong> the US Treasury agreed to sell 358,546,795 of its own
+          GM shares in the IPO, at $33. When it sold its last shares, on 9 December 2013, it
+          said it had recouped $39 billion from its original investment in GM.
+        </li>
+        <li>
+          <strong>Cerebras:</strong> it first filed to list in September 2024, while a US
+          national security committee, CFIUS, was reviewing an investment by G42, a partner
+          headquartered in the United Arab Emirates. In March 2025, after G42’s role was cut
+          back, CFIUS let Cerebras withdraw the notice. Cerebras withdrew its filing in October
+          2025 and listed in May 2026.
+        </li>
+      </ul>
+
+      <h2>Where Anthropic is</h2>
+      <p>
+        Anthropic closed at $88.91 on 20 November, 8.5% below its first-day close and 7.1% above
+        its $83.00 IPO price. The first of its 23 lock-up release dates is 15 December 2026, a
+        week after SpaceX’s last. Every date is listed in <Link href="/articles/anthropic-lock-up-dates">Anthropic’s lock-up: the 23 dates its shareholders can start selling</Link>.
+      </p>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        Thirteen companies are a small group, and each listed in a different market, from Visa
+        in a financial crisis in 2008 to SK hynix in 2026. Size is the only thing they share.
+        The tables record what happened to each of them; they say nothing about what Anthropic’s
+        shares will do.
+      </p>
+      <p>
+        Information only. This is general information, not financial advice, and does not take
+        into account your objectives, financial situation or needs.
       </p>
     </>
   ),
