@@ -1342,6 +1342,76 @@ export const ARTICLES = [
     reviewed: '2026-11-20',
     minutes: 10,
   },
+  {
+    slug: 'anthropic-lock-up-dates',
+    title: 'Anthropic’s lock-up: the 23 dates its shareholders can start selling',
+    searchTitle: 'Anthropic lock-up: the 23 dates $ANT insiders can sell',
+    question: 'When can Anthropic’s staff, investors and founders sell their shares?',
+    answer:
+      'Anthropic sold 980 million shares in its IPO, out of about 13.2 billion. Its prospectus lists 23 dates on which more can start to be sold, beginning with up to 315 million shares held by staff on the first day of trading and ending with its seven co-founders, about a year later.',
+    summary:
+      'Anthropic’s prospectus lists 23 dates when locked-up shares can be sold, from up to 315 million on day one to its founders about a year later.',
+    kind: 'commentary',
+    deck: [
+      'Anthropic sold 980 million shares in its IPO. ',
+      { strong: 'Most of its 13.2 billion shares are still locked up.' },
+    ],
+    finding: [
+      'Sold ',
+      { figure: '980M' },
+      ' of ',
+      { figure: '13.2B' },
+      ' shares; release dates ',
+      { figure: '23' },
+      '.',
+    ],
+    facts: [
+      { value: '23', label: 'dates locked-up shares can start to be sold' },
+      { value: '315M', label: 'shares staff could sell from day one' },
+      { value: '303M', label: 'shares that can be sold from 15 December' },
+    ],
+    region: 'United States',
+    published: '2026-11-23',
+    reviewed: '2026-11-23',
+    minutes: 5,
+    ctaText:
+      'Every stock we track in the US, Australia and Canada has its own page, with its price history, how far it sits below its high, and its fundamentals.',
+  },
+  {
+    slug: 'biggest-ipos-before-anthropic',
+    title: 'The 13 biggest IPOs before Anthropic all fell below their first-day close',
+    searchTitle: 'Biggest IPOs before Anthropic: all 13 fell below day one',
+    question: 'What happened to the biggest IPOs after their first day of trading?',
+    answer:
+      'Renaissance Capital lists 13 US IPOs since 2008 among the 25 largest ever. Every one later closed below its first-day close, eight of them the next trading day, and 12 fell below their IPO price. Five are above that first close today; eight are below it.',
+    summary:
+      'Every US IPO since 2008 among the 25 largest ever later closed below its first-day close, and 12 fell below their IPO price. Here is each one.',
+    kind: 'commentary',
+    deck: [
+      'Anthropic closed its first day at $97.17 and its second at $88.91. ',
+      { strong: 'Every one of the 13 biggest US IPOs since 2008 later closed below its first-day close.' },
+    ],
+    finding: [
+      'Below day one: ',
+      { figure: '13 of 13' },
+      '; below the IPO price: ',
+      { figure: '12' },
+      '; above day one today: ',
+      { figure: '5' },
+      '.',
+    ],
+    facts: [
+      { value: '13 of 13', label: 'closed below their first-day close' },
+      { value: '8', label: 'did it the very next trading day' },
+      { value: '12', label: 'closed below their IPO price' },
+    ],
+    region: 'United States',
+    published: '2026-11-24',
+    reviewed: '2026-11-24',
+    minutes: 6,
+    ctaText:
+      'Every stock we track in the US, Australia and Canada has its own page, with its price history, how far it sits below its high, and its fundamentals.',
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
