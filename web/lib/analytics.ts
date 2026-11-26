@@ -1,3 +1,5 @@
+import { trackMeta } from '@/lib/metaPixel';
+
 /**
  * Google Analytics 4 — what it may see, and the one place that says so.
  *
@@ -125,7 +127,12 @@ const KEPT_PARAMS = [
  * link would not be counted at all on that page. Anything NOT on either list — a
  * token, a code, a Stripe session id — still keeps the tag from loading.
  */
-const GATE_ALSO_ALLOWS = ['next', 'error'];
+// `fbclid`: Meta appends it to EVERY ad click (2026-11-27, Philippines campaign). Without
+// it here the landing page of every Meta ad would load neither tag, and the visit that
+// matters most would be the one never counted. It is an ad-click id, not a person; the
+// Meta pixel needs it in the raw address to credit the click (lib/metaPixel.ts), and
+// `cleanLocation` still never forwards it to Google.
+const GATE_ALSO_ALLOWS = ['next', 'error', 'fbclid'];
 
 /**
  * The address Google is allowed to see: origin + path + utm tags. Never the rest of
@@ -207,7 +214,15 @@ export type AnalyticsEvent =
   | 'refer_friend'
   | 'generate_lead'
   | 'account_deletion_requested'
-  | 'film_sound_on';
+  | 'film_sound_on'
+  // Added 2026-11-27 so the funnel can be read end to end (Philippines campaign):
+  // which stock a reader opened, what they searched and filtered, which call to action
+  // on a public page they pressed, and how far into a Learn or Articles piece they read.
+  | 'view_stock'
+  | 'search_stock'
+  | 'filter_results'
+  | 'select_cta'
+  | 'read_article';
 
 type Params = Record<string, string | number | boolean | Array<Record<string, string | number>>>;
 
@@ -225,6 +240,8 @@ function gtag(): Gtag | null {
  * so a caller never has to ask.
  */
 export function track(event: AnalyticsEvent, params: Params = {}): void {
+  // Meta hears a handful of these (lib/metaPixel.ts decides which); it guards itself.
+  trackMeta(event, params);
   try {
     const g = gtag();
     if (g) {

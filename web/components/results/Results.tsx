@@ -93,6 +93,26 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const mapRows = useMemo(() => applyFilters(rows, { ...filter, hiddenTiers: [] }), [rows, filter]);
   const sorted = useMemo(() => sortRows(filtered, sortKey, sortAsc), [filtered, sortKey, sortAsc]);
 
+  // Which controls a reader actually uses on the results (Analytics, 2026-11-27): one
+  // `filter_results` per control per visit — the first time it changes — so typing in
+  // the search box is one event, not one per keystroke. Names only, never the values.
+  const usedControls = useRef(new Set<string>());
+  const lastSeen = useRef({ filter, viewMode, sortKey });
+  useEffect(() => {
+    const prev = lastSeen.current;
+    lastSeen.current = { filter, viewMode, sortKey };
+    const changed = (Object.keys(filter) as Array<keyof FilterState>)
+      .filter((k) => prev.filter[k] !== filter[k])
+      .map(String);
+    if (prev.viewMode !== viewMode) changed.push('view_mode');
+    if (prev.sortKey !== sortKey) changed.push('sort');
+    for (const control of changed) {
+      if (usedControls.current.has(control)) continue;
+      usedControls.current.add(control);
+      track('filter_results', { filter: control });
+    }
+  }, [filter, viewMode, sortKey]);
+
   const patch = (p: Partial<FilterState>) => setFilter((f) => ({ ...f, ...p }));
   const clearFilters = () => setFilter(INITIAL_FILTER);
 

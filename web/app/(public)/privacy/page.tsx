@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
+import { META_PIXEL_ID, metaPixelIdValid } from '@/lib/metaPixel';
 import { SENTRY_DSN } from '@/lib/sentryOptions';
 import { CAPTCHA_REQUIRED } from '@/lib/turnstile';
 import { LegalDoc } from '@/components/LegalDoc';
@@ -11,6 +12,13 @@ export const metadata: Metadata = pageMetadata({
     'What personal information MajorCycle collects, how it is used, who processes it, how long it is kept, and the rights and choices you have.',
 });
 
+// ⚠️ Every Meta sentence below is CONDITIONAL ON THE PIXEL ID, exactly as the Sentry and
+// Turnstile lines are on theirs: Meta becomes a recipient the moment the pixel is
+// configured, and only then. NEXT_PUBLIC_ vars are baked at build time and this page is
+// prerendered, so the disclosure and the pixel ship in one deploy (11bj v). What is sent
+// is set in lib/metaPixel.ts (browser) and lib/metaServer.ts (Stripe webhook).
+const META_ON = metaPixelIdValid(META_PIXEL_ID);
+
 // BASELINE CONTENT — owner to review/customise before wide launch. Describes the
 // data actually handled by the current stack (Supabase, Stripe, Resend, Vercel).
 export default function PrivacyPage() {
@@ -21,7 +29,8 @@ export default function PrivacyPage() {
       // switched by a build flag below. 25 September 2026: the cookies-and-storage
       // clause and the complaints paragraph, which apply whatever is switched on —
       // so the date is no longer conditional (it was, while the latest change was).
-      updated="16 November 2026"
+      // 27 November 2026: Meta advertising measurement — only when it is switched on.
+      updated={META_ON ? '27 November 2026' : '16 November 2026'}
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -93,6 +102,9 @@ export default function PrivacyPage() {
                 <li>take payment and manage your subscription;</li>
                 <li>send you service and transactional emails;</li>
                 <li>understand how the website is used, so we can improve it;</li>
+                {META_ON ? (
+                  <li>measure which of our ads on Facebook and Instagram lead to sign-ups and subscriptions;</li>
+                ) : null}
                 <li>prevent abuse; and</li>
                 <li>comply with our legal obligations.</li>
               </ul>
@@ -182,6 +194,22 @@ export default function PrivacyPage() {
                   see which pages and sources lead to subscriptions; your card details,
                   name and email are never part of it. Google keeps this data for 14 months.
                 </li>
+                {META_ON ? (
+                  <li>
+                    <strong>Meta (Facebook and Instagram)</strong> — measuring our ads. When
+                    you visit the website, Meta receives the pages you visit, a few of the
+                    things you do here (creating an account, opening a stock, starting
+                    checkout), your browser and device type, and your IP address. When a
+                    trial starts or a subscription is paid, our server tells Meta that it
+                    happened, with the plan and the amount, linked to Meta’s browser
+                    identifier and to a scrambled (one-way hashed) copy of your email address
+                    and account identifier, which Meta uses only to match it to an ad. We
+                    never send your name, your card details or anything you type into the
+                    app. Meta uses this to tell us which ads work and to show our ads to
+                    people likely to be interested; its own use is governed by Meta’s
+                    privacy policy.
+                  </li>
+                ) : null}
                 {/* Added with Layer H2, 2026-09-16 — error monitoring.
                     ⚠️ **CONDITIONAL ON THE DSN, AND THAT IS THE POINT.** Sentry is a
                     RECIPIENT of personal information the moment it is switched on, so
@@ -254,9 +282,19 @@ export default function PrivacyPage() {
               results — so it remembers them between pages and visits; these stay on
               your device. Google Analytics sets its own cookies on our website so it can
               tell a returning visitor from a new one; you can block them
-              in your browser settings, or with Google&rsquo;s opt-out add-on, without
-              affecting how the Service works. We do not use cookies or storage for
-              advertising or to track you across other websites.
+              in your browser settings, or with Google’s opt-out add-on, without
+              affecting how the Service works.{' '}
+              {META_ON ? (
+                <>
+                  We also use Meta’s advertising cookies, which Meta uses to measure our
+                  Facebook and Instagram ads and may use to recognise your browser on other
+                  websites. You can block them in your browser settings, and manage how Meta
+                  uses them in your Facebook or Instagram ad settings, without affecting how
+                  the Service works.
+                </>
+              ) : (
+                <>We do not use cookies or storage for advertising or to track you across other websites.</>
+              )}
             </p>
           ),
         },

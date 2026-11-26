@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { gaClientIdFromCookie, gaSessionIdFromCookie } from '@/lib/analyticsServer';
+import { metaCheckoutMetadata } from '@/lib/metaServer';
 import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
@@ -176,6 +177,9 @@ export async function POST(request: Request) {
   const stripeCustomerId = profile?.stripe_customer_id ?? null;
   const gaClientId = gaClientIdFromCookie(request.headers.get('cookie'));
   const gaSessionId = gaSessionIdFromCookie(request.headers.get('cookie'));
+  // The reader's Meta browser ids and user-agent, so a trial can be tied to the ad that
+  // brought them (lib/metaServer.ts). Empty when they never met the pixel.
+  const metaMeta = metaCheckoutMetadata(request.headers.get('cookie'), request.headers.get('user-agent'));
 
   try {
     const session = await getStripe().checkout.sessions.create({
@@ -197,6 +201,7 @@ export async function POST(request: Request) {
           user_id: user.id,
           ...(gaClientId ? { ga_client_id: gaClientId } : {}),
           ...(gaSessionId ? { ga_session_id: gaSessionId } : {}),
+          ...metaMeta,
         },
       },
       // Reuse the existing Customer if we have one; otherwise let Checkout create it

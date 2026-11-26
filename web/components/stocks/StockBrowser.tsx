@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react
 import { Search } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
+import { track } from '@/lib/analytics';
 import type { UniverseStock } from '@/lib/universe.server';
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
@@ -551,6 +552,11 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                   // views the reader never asked for. The page is streamed and fast
                   // enough that losing the prefetch costs little.
                   prefetch={false}
+                  // A stock opened from a SEARCH (Analytics): only the fact and the result
+                  // count, never the words typed.
+                  onClick={() => {
+                    if (query.trim()) track('search_stock', { location: 'browse', results: shown.length });
+                  }}
                   className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[var(--bg-hover)] transition-colors duration-150 group"
                 >
                   <div className="min-w-0 flex-1">

@@ -100,6 +100,8 @@ export function renewalTimeZone(currency: string | null | undefined): string {
       return 'Australia/Sydney';
     case 'cad':
       return 'America/Toronto';
+    case 'php':
+      return 'Asia/Manila';
     default:
       return 'America/New_York';
   }

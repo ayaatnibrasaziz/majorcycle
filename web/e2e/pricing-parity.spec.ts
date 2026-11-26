@@ -134,11 +134,20 @@ test.describe('the price shown is the price charged (test mode)', () => {
     // relationship it states — "Annual ~30% off" — computed by the same function
     // the "Save N%" badge renders from.
     for (const currency of Object.keys(PRICE_TABLE) as BillingCurrency[]) {
+      // The Philippine price is the one deliberate exception (owner, 2026-11-27): a year
+      // costs three months' price. Asserted separately below, so it cannot drift either.
+      if (currency === 'php') continue;
       expect(
         annualSavingPercent(currency),
         `${currency.toUpperCase()}: the annual plan no longer saves the ~30% decision #18 ` +
           'fixes, and the "Save N%" badge on /pricing renders this exact number',
       ).toBe(30);
     }
+  });
+
+  test('the Philippine annual plan is three months of the monthly price, by design', async () => {
+    const { monthly, annual } = PRICE_TABLE.php;
+    expect(annual).toBe(monthly * 3 + 2); // ₱899 against ₱299 × 3 = ₱897 — a round sticker
+    expect(annualSavingPercent('php')).toBe(75);
   });
 });

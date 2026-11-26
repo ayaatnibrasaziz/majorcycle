@@ -126,6 +126,32 @@ const sentryStub = {
   },
 };
 
+/**
+ * The Meta pixel module (lib/metaPixel.ts, 2026-11-27) reaches the report through
+ * `track()` in lib/analytics.ts, and it reads `NEXT_PUBLIC_META_PIXEL_ID`. A downloaded
+ * report runs from file:// on a customer's machine, where the pixel must never load —
+ * so the module is replaced by no-ops, the same treatment as Sentry above, and the
+ * environment read never enters report.js (assertNoServerCode would refuse it).
+ */
+const metaPixelStub = {
+  name: 'stub-meta-pixel',
+  setup(build) {
+    build.onResolve({ filter: /^@\/lib\/metaPixel$/ }, (args) => ({
+      path: args.path,
+      namespace: 'meta-pixel-stub',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'meta-pixel-stub' }, () => ({
+      contents:
+        'const noop = () => undefined;\n' +
+        'export const trackMeta = noop;\n' +
+        'export const trackMetaPageView = noop;\n' +
+        'export const installMetaPixel = () => false;\n' +
+        'export const metaPixelAllowedHere = () => false;\n',
+      loader: 'js',
+    }));
+  },
+};
+
 /** Every server module the plugin replaced this build. Printed, never silent. */
 const stubbedServerModules = [];
 
@@ -194,7 +220,7 @@ async function buildJs() {
     target: ['es2020'],
     jsx: 'automatic',
     tsconfig: 'tsconfig.json',
-    plugins: [serverActionStub, sentryStub],
+    plugins: [serverActionStub, sentryStub, metaPixelStub],
     define: { 'process.env.NODE_ENV': '"production"' },
     // The downloaded .html runs from file:// with no bundler, no server and no
     // Node — so a single bare `process` reference is a blank page, not a

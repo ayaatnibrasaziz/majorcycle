@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { preload } from 'react-dom';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { FunnelTracker } from '@/components/FunnelTracker';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { RevealFocus } from '@/components/RevealFocus';
 import { SITE_ORIGIN } from '@/lib/url';
@@ -79,6 +80,9 @@ export default function RootLayout({
         {/* Google Analytics: live host only, after load, page addresses stripped of
             their query strings (lib/analytics.ts). Owner decision 15 Nov 2026, no banner. */}
         <GoogleAnalytics />
+        {/* The funnel steps no single component owns: stock views, sign-up/pricing
+            link presses and reading depth (components/FunnelTracker.tsx). */}
+        <FunnelTracker />
       </body>
     </html>
   );
