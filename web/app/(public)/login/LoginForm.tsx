@@ -11,7 +11,7 @@ import { AgreeToTerms } from '@/components/AgreeToTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { track } from '@/lib/analytics';
+import { formErrorReason, track } from '@/lib/analytics';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { safeNextPath } from '@/lib/url';
@@ -116,7 +116,9 @@ export function LoginForm() {
       // page loads is one Cloudflare may draw on screen — the owner saw its box
       // appear under a sign-in that had already worked (2026-09-25).
       captcha.renew();
-      setError(friendlyAuthError(authError.message));
+      const message = friendlyAuthError(authError.message);
+      setError(message);
+      track('form_error', { form: 'login', reason: formErrorReason(message) });
       setLoading(false);
     } else {
       track('login', { method: 'email' });

@@ -215,14 +215,32 @@ export type AnalyticsEvent =
   | 'generate_lead'
   | 'account_deletion_requested'
   | 'film_sound_on'
-  // Added 2026-11-27 so the funnel can be read end to end (Philippines campaign):
-  // which stock a reader opened, what they searched and filtered, which call to action
-  // on a public page they pressed, and how far into a Learn or Articles piece they read.
-  | 'view_stock'
-  | 'search_stock'
+  // Added 2026-11-27 so the funnel can be read end to end (Philippines campaign). Google's
+  // RECOMMENDED names where one fits, so its standard reports pick them up unaided:
+  //   view_item       a Stock Detail page (items[0] = the ticker; GA's item reports)
+  //   search          a stock found through a search box (search_term = the TICKER
+  //                   chosen, never the words typed)
+  //   select_content  a sign-up / sign-in / pricing link (content_type 'cta')
+  // and our own for the rest:
+  | 'view_item'
+  | 'search'
+  | 'select_content'
   | 'filter_results'
-  | 'select_cta'
-  | 'read_article';
+  | 'read_article'
+  | 'view_section'
+  | 'ui_click'
+  | 'form_error';
+
+/**
+ * A form error as a short, safe label for `form_error`: the message WE show (our own
+ * copy, via friendlyAuthError), cut to 80 characters — or 'other' if it could carry a
+ * reader's data (an email address, a long number), which a passed-through provider
+ * message in principle might.
+ */
+export function formErrorReason(message: string): string {
+  if (message.includes('@') || /\d{6,}/.test(message)) return 'other';
+  return message.replace(/\s+/g, ' ').trim().slice(0, 80) || 'other';
+}
 
 type Params = Record<string, string | number | boolean | Array<Record<string, string | number>>>;
 
@@ -239,9 +257,15 @@ function gtag(): Gtag | null {
  * host, before the reader's first page has set it up, or with a blocker installed —
  * so a caller never has to ask.
  */
-export function track(event: AnalyticsEvent, params: Params = {}): void {
+export function track(
+  event: AnalyticsEvent,
+  params: Params = {},
+  opts: { metaEventId?: string } = {},
+): void {
   // Meta hears a handful of these (lib/metaPixel.ts decides which); it guards itself.
-  trackMeta(event, params);
+  // `metaEventId` goes to Meta ONLY: it pairs a browser event with the same event sent
+  // from our server, so Meta counts it once (lib/metaServer.ts). Google never sees it.
+  trackMeta(event, params, opts.metaEventId);
   try {
     const g = gtag();
     if (g) {

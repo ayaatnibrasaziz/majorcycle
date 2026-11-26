@@ -5,18 +5,22 @@ import { cleanLocation, isShareableAddress } from '@/lib/analytics';
 import { contentSecurityPolicy } from '@/lib/csp';
 import { META_CSP, inEuropeanTimeZone, metaEventFor, metaPixelIdValid } from '@/lib/metaPixel';
 import {
+  META_GRAPH_VERSION,
+  clientIpFrom,
   metaCheckoutMetadata,
   metaCookieFrom,
   metaEventsForStripeEvent,
   metaHash,
+  metaWebsiteEvent,
   sendToMeta,
 } from '@/lib/metaServer';
+import { formErrorReason } from '@/lib/analytics';
 import { CURRENCY_SYMBOL, PRICE_TABLE, formatCharge } from '@/lib/pricing';
 import { currencyForCountry } from '@/lib/stripe';
 import { LEARN_ARTICLES } from '@/lib/learn';
 import { SITE } from '@/lib/email/format';
 import { WELCOME_START_HERE, buildWelcomeEmail, welcomeEmailAllowed } from '@/lib/email/welcomeEmail';
-import { ctaTarget } from '@/components/FunnelTracker';
+import { ctaTarget, uiLabel } from '@/components/FunnelTracker';
 
 /**
  * The Philippines launch (owner decisions, 2026-11-27): peso prices, Meta advertising
@@ -56,17 +60,18 @@ test.describe('Meta pixel (browser)', () => {
     expect(metaEventFor('sign_up', { method: 'google' })).toEqual({
       name: 'CompleteRegistration', custom: false, params: { content_name: 'free_account', status: 'google' },
     });
-    expect(metaEventFor('view_stock', { market: 'us', ticker: 'AAPL' })).toEqual({
+    expect(metaEventFor('view_item', { items: [{ item_id: 'AAPL', item_name: 'AAPL', item_category: 'us' }] })).toEqual({
       name: 'ViewContent', custom: false, params: { content_type: 'stock', content_ids: ['AAPL'], content_category: 'us' },
     });
-    expect(metaEventFor('begin_checkout', { plan: 'annual' })?.name).toBe('InitiateCheckout');
+    // Checkout is sent from the SERVER only (the browser leaves for Stripe at once).
+    expect(metaEventFor('begin_checkout', { plan: 'annual' })).toBeNull();
     expect(metaEventFor('view_paywall', { feature: 'verdict' })).toEqual({
       name: 'ViewPaywall', custom: true, params: { feature: 'verdict' },
     });
     expect(metaEventFor('run_screen', { tickers: 50 })).toEqual({ name: 'RunScreen', custom: true, params: {} });
     // Everything else stays in Google Analytics only.
-    for (const e of ['login', 'search_stock', 'filter_results', 'read_article', 'select_cta', 'generate_lead',
-      'account_deletion_requested', 'refer_friend', 'export_results'] as const) {
+    for (const e of ['login', 'search', 'filter_results', 'read_article', 'select_content', 'generate_lead',
+      'account_deletion_requested', 'refer_friend', 'export_results', 'ui_click', 'view_section', 'form_error'] as const) {
       expect(metaEventFor(e, {}), e).toBeNull();
     }
   });
@@ -212,6 +217,41 @@ test.describe('Meta Conversions API (server)', () => {
     const md = metaCheckoutMetadata(header, 'x'.repeat(900));
     expect(md).toEqual({ meta_fbp: FBP, meta_fbc: FBC, meta_ua: 'x'.repeat(500) });
     expect(metaCheckoutMetadata(null, null)).toEqual({});
+    expect(metaCheckoutMetadata(null, null, '203.0.113.7', 'PH')).toEqual({ meta_ip: '203.0.113.7', meta_country: 'ph' });
+    expect(metaCheckoutMetadata(null, null, null, 'Philippines')).toEqual({});
+  });
+
+  test('the IP is read from the platform header, and only a real address is kept', () => {
+    const h = (o: Record<string, string>) => ({ get: (k: string) => o[k] ?? null });
+    expect(clientIpFrom(h({ 'x-real-ip': '203.0.113.7' }))).toBe('203.0.113.7');
+    expect(clientIpFrom(h({ 'x-forwarded-for': '198.51.100.2, 10.0.0.1' }))).toBe('198.51.100.2');
+    expect(clientIpFrom(h({ 'x-real-ip': '2001:db8::1' }))).toBe('2001:db8::1');
+    for (const bad of ['', 'not-an-ip', '1.2.3', '<script>']) {
+      expect(clientIpFrom(h({ 'x-real-ip': bad })), bad).toBeNull();
+    }
+  });
+
+  test('a server copy of a browser moment carries everything Meta matches on', () => {
+    const e = metaWebsiteEvent({
+      name: 'CompleteRegistration', eventId: 'reg_uuid-of-user', sourceUrl: 'https://www.majorcycle.com/stocks',
+      userId: 'uuid-of-user', email: 'Reader@Example.com', cookieHeader: `_fbp=${FBP}; _fbc=${FBC}`,
+      userAgent: UA, ip: '203.0.113.7', country: 'PH', now: new Date(1_764_201_234_000),
+    });
+    expect(e).toEqual({
+      event_name: 'CompleteRegistration', event_time: 1_764_201_234, event_id: 'reg_uuid-of-user',
+      action_source: 'website', event_source_url: 'https://www.majorcycle.com/stocks',
+      user_data: {
+        external_id: [metaHash('uuid-of-user')], em: [metaHash('reader@example.com')], fbp: FBP, fbc: FBC,
+        client_user_agent: UA, client_ip_address: '203.0.113.7', country: [metaHash('ph')],
+      },
+      custom_data: {},
+    });
+    // Meta: the IP "must never be hashed"; the email and country always are.
+    expect(JSON.stringify(e).toLowerCase()).not.toContain('reader@example.com');
+  });
+
+  test('the Graph API version is the one Meta documents', () => {
+    expect(META_GRAPH_VERSION).toBe('v27.0');
   });
 
   test('with no token configured, nothing is sent', async () => {
@@ -232,6 +272,25 @@ test.describe('Meta Conversions API (server)', () => {
 });
 
 // ── Funnel ───────────────────────────────────────────────────────────────────────
+test.describe('funnel: labels and form errors never carry a reader’s data', () => {
+  test('a button label is our copy; an email or a long number is dropped', () => {
+    expect(uiLabel('  Start 7-day   free trial ')).toBe('Start 7-day free trial');
+    expect(uiLabel('maria@gmail.com')).toBeNull();
+    expect(uiLabel('Account maria@gmail.com')).toBeNull();
+    expect(uiLabel('Card 4242424242424242')).toBeNull();
+    expect(uiLabel('')).toBeNull();
+    expect(uiLabel('x'.repeat(90))).toHaveLength(60);
+    // Control: a ticker and a year are fine.
+    expect(uiLabel('AAPL 2026')).toBe('AAPL 2026');
+  });
+
+  test('a form error is our message, or "other"', () => {
+    expect(formErrorReason('Incorrect email or password.')).toBe('Incorrect email or password.');
+    expect(formErrorReason('User maria@gmail.com already exists')).toBe('other');
+    expect(formErrorReason('')).toBe('other');
+  });
+});
+
 test.describe('funnel: which links count as a call to action', () => {
   test('sign-up, sign-in and pricing on this site, and nothing else', () => {
     const o = 'https://www.majorcycle.com';

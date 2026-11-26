@@ -13,6 +13,10 @@ import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
  * The two "start here" pieces are named by slug; if either slug ever disappears the
  * email simply lists every article under the other heading.
  *
+ * Copy rewritten 2026-11-27 at the owner's request to sound like a person rather than
+ * a catalogue: titles and reading times only (the registry's summaries are written for
+ * the Learn index), plain sentences, no slogan at the end.
+ *
  * Triggered by `acknowledgeDisclaimer` — the write-once first-login record — so it can
  * only be scheduled once per account. The Resend idempotency key is the user id as a
  * second guard. noreply@ is unmonitored, so the email invites questions through
@@ -35,55 +39,60 @@ export interface WelcomeEmail {
   text: string;
 }
 
+type Article = (typeof LEARN_ARTICLES)[number];
+
 /** Pure: the email's content. Rendered by e2e/email-render.spec.ts without sending anything. */
 export function buildWelcomeEmail(name: string | null): WelcomeEmail {
-  const start = LEARN_ARTICLES.filter((a) => (WELCOME_START_HERE as readonly string[]).includes(a.slug));
-  const ideas = LEARN_ARTICLES.filter((a) => !(WELCOME_START_HERE as readonly string[]).includes(a.slug));
+  const isStart = (a: Article) => (WELCOME_START_HERE as readonly string[]).includes(a.slug);
+  const start = LEARN_ARTICLES.filter(isStart);
+  const ideas = LEARN_ARTICLES.filter((a) => !isStart(a));
   const url = (slug: string) => `${SITE}${learnPath(slug)}`;
   const days = `${TRIAL_PERIOD_DAYS} days`;
+  const mins = (a: Article) => `${a.minutes} min`;
 
-  const item = (a: (typeof LEARN_ARTICLES)[number]) =>
-    `<li style="margin:0 0 8px;">${link(url(a.slug), a.title)} — ${escapeHtml(a.summary)}</li>`;
+  const intro = 'Welcome to MajorCycle, and thanks for signing up.';
+  const startLead =
+    "If you're not sure where to begin, start with these two. They explain what a rating means and what it doesn't:";
+  const ideasLead =
+    'After that, each of these covers one idea behind the ratings. Read them in any order, whenever you have a few minutes:';
+  const trial = `When you're ready to see the full ratings, the Verdict and the screener, you can try everything free for ${days}.`;
+  const closing = "This is the only welcome email we'll send. If you have a question, you can reach us at";
+
+  const item = (a: Article) =>
+    `<li style="margin:0 0 8px;">${link(url(a.slug), a.title)} <span style="color:#64748b;">(${mins(a)})</span></li>`;
   const list = (items: string[]) =>
     `<ul style="margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.6;color:#0f1923;">${items.join('')}</ul>`;
 
   const bodyHtml = [
     greetingHtml(name),
-    p(
-      'Thanks for joining MajorCycle. Here is the short version of how to get the most out of it, ' +
-        'and where to read more when you want the detail.',
-    ),
-    p('<strong>Start here</strong>'),
+    p(intro),
+    p(escapeHtml(startLead)),
     list(start.map(item)),
-    p('<strong>The ideas behind the ratings</strong>'),
+    p(ideasLead),
     list(ideas.map(item)),
-    p(
-      `When you want to see the full picture — the Overall Rating, the Verdict and the screener that ` +
-        `ranks a whole market — you can try everything free for ${days}.`,
-    ),
-    button(`Try it free for ${days}`, `${SITE}/account`),
-    muted(
-      `This is a one-off welcome email. MajorCycle is educational analysis, not financial advice. ` +
-        `Questions? Get in touch at ${link(`${SITE}/contact`, 'majorcycle.com/contact')}.`,
-    ),
+    p(escapeHtml(trial)),
+    button('Start my free trial', `${SITE}/account`),
+    muted(`${escapeHtml(closing)} ${link(`${SITE}/contact`, 'majorcycle.com/contact')}.`),
   ].join('\n');
 
-  const textItem = (a: (typeof LEARN_ARTICLES)[number]) => `- ${a.title} — ${a.summary}\n  ${url(a.slug)}`;
-  const text =
-    `${greetingText(name)}\n\n` +
-    'Thanks for joining MajorCycle. Here is the short version of how to get the most out of it, ' +
-    'and where to read more when you want the detail.\n\n' +
-    `START HERE\n${start.map(textItem).join('\n')}\n\n` +
-    `THE IDEAS BEHIND THE RATINGS\n${ideas.map(textItem).join('\n')}\n\n` +
-    `When you want to see the full picture — the Overall Rating, the Verdict and the screener that ` +
-    `ranks a whole market — you can try everything free for ${days}: ${SITE}/account\n\n` +
-    `This is a one-off welcome email. MajorCycle is educational analysis, not financial advice. ` +
-    `Questions? Get in touch at ${SITE}/contact`;
+  const textItem = (a: Article) => `- ${a.title} (${mins(a)})\n  ${url(a.slug)}`;
+  const text = [
+    greetingText(name),
+    intro,
+    startLead,
+    start.map(textItem).join('\n'),
+    ideasLead,
+    ideas.map(textItem).join('\n'),
+    `${trial.slice(0, -1)}: ${SITE}/account`,
+    `${closing} ${SITE}/contact`,
+    // The HTML footer (renderBrandEmail) carries this line; the plain-text copy has no footer.
+    'MajorCycle is educational information only, not financial advice.',
+  ].join('\n\n');
 
   return {
-    subject: 'Welcome to MajorCycle — where to start',
+    subject: 'Welcome to MajorCycle: where to start',
     heading: 'Welcome to MajorCycle',
-    preheader: 'How to read a rating, and the short articles that explain the ideas behind it.',
+    preheader: 'Two short reads to start with, and a few more for when you have time.',
     bodyHtml,
     text,
   };

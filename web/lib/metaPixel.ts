@@ -81,12 +81,22 @@ export interface MetaEvent {
   /** Standard events go through `track`; our own names through `trackCustom`. */
   custom: boolean;
   params: Record<string, string | number | string[]>;
+  /** Shared with the server copy of the same event so Meta keeps one (48 h window). */
+  eventId?: string;
 }
 
 /**
  * Which of our events Meta hears. Standard names where Meta has one (it optimises on
  * those), our own for the two retargeting signals. Everything else stays in GA only.
- * Trials and payments are NOT here: they happen at Stripe, and the server sends them.
+ *
+ * Meta's own guidance (Conversions API best practices, read 2026-11-27) is to send the
+ * important events from BOTH the browser and the server, paired by `event_id`:
+ *   - CompleteRegistration: browser here, server at the first sign-in
+ *     (app/(app)/actions.ts), both `reg_<user id>`.
+ *   - InitiateCheckout: SERVER ONLY (app/api/checkout/route.ts). The browser leaves for
+ *     Stripe the instant the session exists, so a browser hit there is the one most
+ *     likely to be lost, and the server copy carries everything Meta matches on.
+ *   - StartTrial / Subscribe / Purchase: server only — they happen at Stripe.
  */
 export function metaEventFor(event: AnalyticsEvent, params: Record<string, unknown>): MetaEvent | null {
   const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -97,9 +107,10 @@ export function metaEventFor(event: AnalyticsEvent, params: Record<string, unkno
         custom: false,
         params: { content_name: 'free_account', status: str(params['method']) ?? 'unknown' },
       };
-    case 'view_stock': {
-      const ticker = str(params['ticker']);
-      const market = str(params['market']);
+    case 'view_item': {
+      const item = (Array.isArray(params['items']) ? params['items'][0] : null) as Record<string, unknown> | null;
+      const ticker = str(item?.['item_id']);
+      const market = str(item?.['item_category']);
       return {
         name: 'ViewContent',
         custom: false,
@@ -109,10 +120,6 @@ export function metaEventFor(event: AnalyticsEvent, params: Record<string, unkno
           ...(market ? { content_category: market } : {}),
         },
       };
-    }
-    case 'begin_checkout': {
-      const plan = str(params['plan']);
-      return { name: 'InitiateCheckout', custom: false, params: plan ? { content_name: plan } : {} };
     }
     case 'view_paywall': {
       const feature = str(params['feature']);
@@ -191,7 +198,8 @@ export function installMetaPixel(): boolean {
 }
 
 function send(f: Fbq, e: MetaEvent): void {
-  f(e.custom ? 'trackCustom' : 'track', e.name, e.params);
+  if (e.eventId) f(e.custom ? 'trackCustom' : 'track', e.name, e.params, { eventID: e.eventId });
+  else f(e.custom ? 'trackCustom' : 'track', e.name, e.params);
 }
 
 /** A page view on a client-side move. Skipped on a page whose address is not shareable. */
@@ -205,10 +213,11 @@ export function trackMetaPageView(): void {
 }
 
 /** Called by `track()` in lib/analytics.ts for every event; forwards only the mapped ones. */
-export function trackMeta(event: AnalyticsEvent, params: Record<string, unknown>): void {
+export function trackMeta(event: AnalyticsEvent, params: Record<string, unknown>, eventId?: string): void {
   try {
-    const e = metaEventFor(event, params);
-    if (!e) return;
+    const mapped = metaEventFor(event, params);
+    if (!mapped) return;
+    const e: MetaEvent = eventId ? { ...mapped, eventId } : mapped;
     const f = fbq();
     if (f) {
       if (addressesClean()) send(f, e);

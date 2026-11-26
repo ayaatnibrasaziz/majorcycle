@@ -73,7 +73,7 @@ export function TickerSearchAdd({
   }, []);
 
   const add = (ticker: string) => {
-    track('search_stock', { location: 'run' });
+    track('search', { search_term: ticker, location: 'run' });
     onAdd(ticker);
     setQuery('');
     setHits([]);

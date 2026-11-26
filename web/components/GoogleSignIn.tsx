@@ -132,7 +132,10 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
       // too. An account created in the last two minutes is a sign-up; anything older
       // is a return. (Email sign-ups are `sign_up` in SignupForm.)
       const created = Date.parse(data.user?.created_at ?? '');
-      track(Date.now() - created < 120_000 ? 'sign_up' : 'login', { method: 'google' });
+      const isNew = Date.now() - created < 120_000;
+      const id = data.user?.id;
+      // A new account's `reg_<user id>` pairs with the server's copy (lib/metaPixel.ts).
+      track(isNew ? 'sign_up' : 'login', { method: 'google' }, isNew && id ? { metaEventId: `reg_${id}` } : {});
       // A fresh interactive login is never a confined recovery session — clear any
       // lingering marker (httpOnly, so it must be cleared server-side) before we
       // navigate, otherwise a stale marker would trap this login on the

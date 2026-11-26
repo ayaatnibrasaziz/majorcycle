@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { gaClientIdFromCookie, gaSessionIdFromCookie } from '@/lib/analyticsServer';
-import { metaCheckoutMetadata } from '@/lib/metaServer';
+import { clientIpFrom, metaCheckoutMetadata, metaWebsiteEvent, sendToMeta } from '@/lib/metaServer';
 import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
@@ -179,7 +179,13 @@ export async function POST(request: Request) {
   const gaSessionId = gaSessionIdFromCookie(request.headers.get('cookie'));
   // The reader's Meta browser ids and user-agent, so a trial can be tied to the ad that
   // brought them (lib/metaServer.ts). Empty when they never met the pixel.
-  const metaMeta = metaCheckoutMetadata(request.headers.get('cookie'), request.headers.get('user-agent'));
+  const clientIp = clientIpFrom(request.headers);
+  const metaMeta = metaCheckoutMetadata(
+    request.headers.get('cookie'),
+    request.headers.get('user-agent'),
+    clientIp,
+    billingCountry,
+  );
 
   try {
     const session = await getStripe().checkout.sessions.create({
@@ -216,6 +222,21 @@ export async function POST(request: Request) {
       // dynamically; the owner tunes them in Dashboard → Payment methods).
       // Tax stays OFF at launch — one-line flip when GST registration lands (decision D).
       automatic_tax: { enabled: false },
+      // Philippines: a note under Stripe's pay button (owner, 2026-11-27: "if they can't
+      // pay due to technical faults there is no point"). The commonest failure for a
+      // Filipino card at a foreign merchant is the bank's own switch for online or
+      // international payments being off; the fix is in the reader's app, and only
+      // they can make it. Peso sessions only.
+      ...(currency === 'php'
+        ? {
+            custom_text: {
+              submit: {
+                message:
+                  'Using a debit card, or your GCash or Maya card? Turn on online and international payments in your bank or wallet app first, and approve the one-time code if your bank sends one.',
+              },
+            },
+          }
+        : {}),
       // 30 minutes (Stripe's minimum) instead of the default 24 hours. A second live
       // subscription is caught and cancelled after the fact (lib/billing/sync.ts), but
       // one that has already CHARGED needs a manual refund, and a customer billed twice
@@ -233,6 +254,30 @@ export async function POST(request: Request) {
       // /pricing is the signed-out shop window and now redirects them here anyway.
       cancel_url: `${origin}/account?checkout=cancelled`,
     });
+
+    // Meta: checkout started, sent from HERE rather than the browser, which leaves for
+    // Stripe the instant this returns (lib/metaPixel.ts). After the response, so it can
+    // never slow the redirect; a no-op until META_CAPI_TOKEN is set.
+    if (session.url) {
+      const cookieHeader = request.headers.get('cookie');
+      const userAgent = request.headers.get('user-agent');
+      after(() =>
+        sendToMeta([
+          metaWebsiteEvent({
+            name: 'InitiateCheckout',
+            eventId: session.id,
+            sourceUrl: `${origin}/account`,
+            userId: user.id,
+            email: user.email,
+            cookieHeader,
+            userAgent,
+            ip: clientIp,
+            country: billingCountry,
+            customData: { currency: currency.toUpperCase(), content_name: String(plan) },
+          }),
+        ]),
+      );
+    }
 
     if (!session.url) {
       return NextResponse.json(

@@ -1,9 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 
 import { sendWelcomeEmail } from '@/lib/email/welcomeEmail';
+import { clientIpFrom, metaWebsiteEvent, sendToMeta } from '@/lib/metaServer';
+import { SITE_ORIGIN } from '@/lib/url';
 import { acknowledgeWriteDecision } from '@/lib/entitlement';
 import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -39,7 +42,7 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
   // gate is ever wrong again, being wrong costs nothing.
   const { data: existing, error: readError } = await supabase
     .from('profiles')
-    .select('acknowledged_disclaimer_at, display_name')
+    .select('acknowledged_disclaimer_at, display_name, country')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -91,6 +94,25 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
   if (email) {
     after(() => sendWelcomeEmail({ to: email, name: existing?.display_name ?? null, userId: user.id }));
   }
+
+  // Meta: the server copy of the registration (Meta's "redundant setup"). This write
+  // happens once per account, and `reg_<user id>` is the same id the browser sent with
+  // its CompleteRegistration, so Meta keeps one of the two (lib/metaPixel.ts). A no-op
+  // until META_CAPI_TOKEN is set.
+  const h = await headers();
+  const registration = metaWebsiteEvent({
+    name: 'CompleteRegistration',
+    eventId: `reg_${user.id}`,
+    sourceUrl: `${SITE_ORIGIN}/stocks`,
+    userId: user.id,
+    email: user.email,
+    cookieHeader: h.get('cookie'),
+    userAgent: h.get('user-agent'),
+    ip: clientIpFrom(h),
+    country: existing?.country ?? h.get('x-vercel-ip-country'),
+    customData: { content_name: 'free_account' },
+  });
+  after(() => sendToMeta([registration]));
 
   // The (app) layout gates the onboarding modal on this flag across every
   // authenticated route, so revalidate the shared layout (not just one page).

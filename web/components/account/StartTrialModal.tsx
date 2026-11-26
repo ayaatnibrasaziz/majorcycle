@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { track } from '@/lib/analytics';
 import type { BillingCurrency } from '@/lib/stripe';
+import { PriceFigure } from '@/components/PriceFigure';
 import {
   PRICE_TABLE,
   CURRENCY_SYMBOL,
@@ -166,9 +167,7 @@ export function StartTrialModal({
 
           {/* Price */}
           <div className="mt-6 flex items-baseline gap-1.5">
-            <span className="font-mono text-[38px] font-bold leading-none tracking-[-1px] text-[var(--text-primary)]">
-              {money(isAnnual ? prices.annual : prices.monthly, currency)}
-            </span>
+            <PriceFigure amount={isAnnual ? prices.annual : prices.monthly} currency={currency} />
             <span className="text-[13px] font-medium text-[var(--text-muted)]">
               {isAnnual ? '/year' : '/month'}
             </span>

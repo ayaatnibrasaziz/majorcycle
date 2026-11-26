@@ -9,6 +9,7 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/AuthCard';
 import type { BillingCurrency } from '@/lib/stripe';
+import { PriceFigure } from '@/components/PriceFigure';
 import {
   PREMIUM_UNLOCKS,
   PRICE_TABLE,
@@ -123,9 +124,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
 
         {/* Price */}
         <div className="mt-6 flex items-baseline gap-1.5">
-          <span className="font-mono text-[38px] font-bold leading-none tracking-[-1px] text-[var(--text-primary)]">
-            {money(isAnnual ? prices.annual : prices.monthly, currency)}
-          </span>
+          <PriceFigure amount={isAnnual ? prices.annual : prices.monthly} currency={currency} />
           <span className="text-[13px] font-medium text-[var(--text-secondary)]">
             {isAnnual ? '/year' : '/month'}
           </span>

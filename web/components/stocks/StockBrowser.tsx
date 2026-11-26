@@ -552,10 +552,12 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                   // views the reader never asked for. The page is streamed and fast
                   // enough that losing the prefetch costs little.
                   prefetch={false}
-                  // A stock opened from a SEARCH (Analytics): only the fact and the result
-                  // count, never the words typed.
+                  // A stock opened from a SEARCH (Analytics, Google's recommended `search`):
+                  // the TICKER chosen and the result count — never the words typed.
                   onClick={() => {
-                    if (query.trim()) track('search_stock', { location: 'browse', results: shown.length });
+                    if (query.trim()) {
+                      track('search', { search_term: s.ticker, location: 'browse', results: shown.length });
+                    }
                   }}
                   className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[var(--bg-hover)] transition-colors duration-150 group"
                 >

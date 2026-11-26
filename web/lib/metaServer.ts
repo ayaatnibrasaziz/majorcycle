@@ -36,10 +36,11 @@ import { SITE_ORIGIN } from '@/lib/url';
  */
 
 /** Graph API version. Each lives about two years; bump deliberately, with a test send. */
-export const META_GRAPH_VERSION = 'v24.0';
+// v27.0 is the version Meta's own Conversions API examples use (read 2026-11-27).
+export const META_GRAPH_VERSION = 'v27.0';
 
 export interface MetaServerEvent {
-  event_name: 'StartTrial' | 'Subscribe' | 'Purchase';
+  event_name: 'StartTrial' | 'Subscribe' | 'Purchase' | 'InitiateCheckout' | 'CompleteRegistration';
   event_time: number;
   event_id: string;
   action_source: 'website' | 'system_generated';
@@ -69,17 +70,45 @@ export function metaCookieFrom(cookieHeader: string | null, name: '_fbp' | '_fbc
 }
 
 /**
+ * The reader's IP address from the platform's headers, or null. Meta's docs list
+ * `client_ip_address` as strongly recommended for matching and say it "must never be
+ * hashed". Vercel sets `x-real-ip`; the first `x-forwarded-for` hop is the fallback.
+ * Only a well-formed v4/v6 address is kept.
+ */
+export function clientIpFrom(headers: { get(name: string): string | null }): string | null {
+  const raw = headers.get('x-real-ip') ?? headers.get('x-forwarded-for')?.split(',')[0] ?? null;
+  const ip = raw?.trim() ?? '';
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) return ip;
+  if (/^[0-9a-f:]{2,39}$/i.test(ip) && ip.includes(':')) return ip;
+  return null;
+}
+
+/** An ISO-3166 alpha-2 code, lowercased, or null — Meta hashes `country` in that form. */
+function countryCode(country: string | null | undefined): string | null {
+  const c = country?.trim().toLowerCase() ?? '';
+  return /^[a-z]{2}$/.test(c) ? c : null;
+}
+
+/**
  * The metadata checkout adds, so Meta can tie a trial back to the ad click. Stripe caps
  * a metadata value at 500 characters, so the user-agent is cut there.
  */
-export function metaCheckoutMetadata(cookieHeader: string | null, userAgent: string | null): Record<string, string> {
+export function metaCheckoutMetadata(
+  cookieHeader: string | null,
+  userAgent: string | null,
+  ip: string | null = null,
+  country: string | null = null,
+): Record<string, string> {
   const fbp = metaCookieFrom(cookieHeader, '_fbp');
   const fbc = metaCookieFrom(cookieHeader, '_fbc');
   const ua = userAgent?.trim().slice(0, 500);
+  const cc = countryCode(country);
   return {
     ...(fbp ? { meta_fbp: fbp } : {}),
     ...(fbc ? { meta_fbc: fbc } : {}),
     ...(ua ? { meta_ua: ua } : {}),
+    ...(ip ? { meta_ip: ip } : {}),
+    ...(cc ? { meta_country: cc } : {}),
   };
 }
 
@@ -101,6 +130,9 @@ function userData(meta: Record<string, string> | null | undefined, email: string
   if (meta?.['meta_fbp']) ud['fbp'] = meta['meta_fbp'];
   if (meta?.['meta_fbc']) ud['fbc'] = meta['meta_fbc'];
   if (meta?.['meta_ua']) ud['client_user_agent'] = meta['meta_ua'];
+  if (meta?.['meta_ip']) ud['client_ip_address'] = meta['meta_ip'];
+  const cc = countryCode(meta?.['meta_country']);
+  if (cc) ud['country'] = [metaHash(cc)];
   return ud;
 }
 
@@ -165,6 +197,38 @@ export function metaEventsForStripeEvent(event: Stripe.Event): MetaServerEvent[]
     default:
       return [];
   }
+}
+
+/**
+ * A browser-side moment sent from the SERVER too (Meta's "redundant setup"): the
+ * request that caused it is in hand, so this copy carries the IP, user-agent, cookies
+ * and hashed email that make it matchable. `eventId` pairs it with the browser copy
+ * where one exists (Meta keeps one of the pair within 48 hours).
+ */
+export function metaWebsiteEvent(opts: {
+  name: 'InitiateCheckout' | 'CompleteRegistration';
+  eventId: string;
+  sourceUrl: string;
+  userId: string;
+  email: string | null | undefined;
+  cookieHeader: string | null;
+  userAgent: string | null;
+  ip: string | null;
+  country?: string | null;
+  customData?: Record<string, string | number>;
+  now?: Date;
+}): MetaServerEvent {
+  const meta = { user_id: opts.userId, ...metaCheckoutMetadata(opts.cookieHeader, opts.userAgent, opts.ip, opts.country ?? null) };
+  const ud = userData(meta, opts.email, null);
+  return {
+    event_name: opts.name,
+    event_time: Math.floor((opts.now ?? new Date()).getTime() / 1000),
+    event_id: opts.eventId,
+    action_source: 'website',
+    event_source_url: opts.sourceUrl,
+    user_data: ud,
+    custom_data: opts.customData ?? {},
+  };
 }
 
 /** Send. Best-effort and bounded like the GA half: Meta must never slow or fail a webhook. */
