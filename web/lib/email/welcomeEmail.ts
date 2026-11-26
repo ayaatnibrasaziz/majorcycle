@@ -13,8 +13,8 @@ import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
  * The two "start here" pieces are named by slug; if either slug ever disappears the
  * email simply lists every article under the other heading.
  *
- * Owner, 2026-11-27: keep this first version of the copy; only its last line was
- * rewritten (a second, shorter draft was tried and rejected).
+ * Owner, 2026-11-27: keep this first version of the copy; only the trial sentence
+ * (`TRIAL_LINE`) was rewritten (a second, shorter draft was tried and rejected).
  *
  * Triggered by `acknowledgeDisclaimer` — the write-once first-login record — so it can
  * only be scheduled once per account. The Resend idempotency key is the user id as a
@@ -44,6 +44,7 @@ export function buildWelcomeEmail(name: string | null): WelcomeEmail {
   const ideas = LEARN_ARTICLES.filter((a) => !(WELCOME_START_HERE as readonly string[]).includes(a.slug));
   const url = (slug: string) => `${SITE}${learnPath(slug)}`;
   const days = `${TRIAL_PERIOD_DAYS} days`;
+  const TRIAL_LINE = `Once you're ready, you can see a stock's full rating and Verdict, and run the screener across a whole market. Try it free for ${days}`;
 
   const item = (a: (typeof LEARN_ARTICLES)[number]) =>
     `<li style="margin:0 0 8px;">${link(url(a.slug), a.title)} — ${escapeHtml(a.summary)}</li>`;
@@ -60,16 +61,13 @@ export function buildWelcomeEmail(name: string | null): WelcomeEmail {
     list(start.map(item)),
     p('<strong>The ideas behind the ratings</strong>'),
     list(ideas.map(item)),
-    p(
-      `When you want to see the full picture — the Overall Rating, the Verdict and the screener that ` +
-        `ranks a whole market — you can try everything free for ${days}.`,
-    ),
+    // The one line rewritten at the owner's request (2026-11-27: the first version's
+    // trial sentence "sounded AI"). Everything else is the first version's copy.
+    p(`${TRIAL_LINE}.`),
     button(`Try it free for ${days}`, `${SITE}/account`),
-    // The last line, rewritten 2026-11-27 (owner: the first version "sounded AI"). The
-    // not-financial-advice line stays in the HTML footer that renderBrandEmail adds.
     muted(
-      `This is the only welcome email we'll send. If you have a question, you can reach us at ` +
-        `${link(`${SITE}/contact`, 'majorcycle.com/contact')}.`,
+      `This is a one-off welcome email. MajorCycle is educational analysis, not financial advice. ` +
+        `Questions? Get in touch at ${link(`${SITE}/contact`, 'majorcycle.com/contact')}.`,
     ),
   ].join('\n');
 
@@ -80,11 +78,9 @@ export function buildWelcomeEmail(name: string | null): WelcomeEmail {
     'and where to read more when you want the detail.\n\n' +
     `START HERE\n${start.map(textItem).join('\n')}\n\n` +
     `THE IDEAS BEHIND THE RATINGS\n${ideas.map(textItem).join('\n')}\n\n` +
-    `When you want to see the full picture — the Overall Rating, the Verdict and the screener that ` +
-    `ranks a whole market — you can try everything free for ${days}: ${SITE}/account\n\n` +
-    `This is the only welcome email we'll send. If you have a question, you can reach us at ${SITE}/contact\n\n` +
-    // The HTML footer (renderBrandEmail) carries this line; the plain-text copy has no footer.
-    'MajorCycle is educational information only, not financial advice.';
+    `${TRIAL_LINE}: ${SITE}/account\n\n` +
+    `This is a one-off welcome email. MajorCycle is educational analysis, not financial advice. ` +
+    `Questions? Get in touch at ${SITE}/contact`;
 
   return {
     subject: 'Welcome to MajorCycle — where to start',
