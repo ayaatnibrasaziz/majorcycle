@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { preload } from 'react-dom';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { FunnelTracker } from '@/components/FunnelTracker';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { RevealFocus } from '@/components/RevealFocus';
 import { SITE_ORIGIN } from '@/lib/url';
@@ -24,6 +25,20 @@ const FONT_FILES = ['/fonts/sora-latin-v1.woff2', '/fonts/jetbrains-mono-latin-v
  */
 const googleSiteVerification = process.env['NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION'];
 
+/**
+ * Meta (Facebook) domain ownership proof, same pattern as Google's above: renders
+ * `<meta name="facebook-domain-verification" content="…">` only when set. Meta reads it
+ * off the home page's <head>, so no Cloudflare DNS record is needed.
+ */
+const metaDomainVerification = process.env['NEXT_PUBLIC_META_DOMAIN_VERIFICATION'];
+
+const verification: Metadata['verification'] = {
+  ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+  ...(metaDomainVerification
+    ? { other: { 'facebook-domain-verification': metaDomainVerification } }
+    : {}),
+};
+
 export const metadata: Metadata = {
   title: {
     default: 'MajorCycle — Financial Terminal',
@@ -33,9 +48,7 @@ export const metadata: Metadata = {
     'Where US, Australian and Canadian shares sit against their own history of falls, with financial health scores and analyst data. Educational, not advice.',
   // SITE_ORIGIN, not a re-typed literal — it disagreed with lib/url.ts until G1.
   metadataBase: new URL(process.env['NEXT_PUBLIC_SITE_URL'] ?? SITE_ORIGIN),
-  ...(googleSiteVerification
-    ? { verification: { google: googleSiteVerification } }
-    : {}),
+  ...(googleSiteVerification || metaDomainVerification ? { verification } : {}),
 };
 
 export default function RootLayout({
@@ -79,6 +92,9 @@ export default function RootLayout({
         {/* Google Analytics: live host only, after load, page addresses stripped of
             their query strings (lib/analytics.ts). Owner decision 15 Nov 2026, no banner. */}
         <GoogleAnalytics />
+        {/* The funnel steps no single component owns: stock views, sign-up/pricing
+            link presses and reading depth (components/FunnelTracker.tsx). */}
+        <FunnelTracker />
       </body>
     </html>
   );

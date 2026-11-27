@@ -16,6 +16,7 @@ import {
   renewalTimeZone,
 } from '@/lib/billing/accessEmails';
 import { reportStripeEventToAnalytics } from '@/lib/analyticsServer';
+import { reportStripeEventToMeta } from '@/lib/metaServer';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -655,7 +656,9 @@ export async function POST(request: Request) {
   // Google Analytics: trial starts, conversions, renewals with revenue, cancellations,
   // failed payments and disputes (lib/analyticsServer.ts). Live mode only, bounded at
   // 2.5 s, never throws — and AFTER the claim, so a redelivery cannot count twice.
-  await reportStripeEventToAnalytics(event);
+  // Meta's Conversions API hears trials and payments the same way (lib/metaServer.ts);
+  // the two run side by side so the webhook still answers within one 2.5 s bound.
+  await Promise.all([reportStripeEventToAnalytics(event), reportStripeEventToMeta(event)]);
 
   return NextResponse.json({ received: true });
 }

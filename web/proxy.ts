@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 import { GA_CSP } from '@/lib/analytics';
+import { META_CSP, META_PIXEL_ID, metaPixelIdValid } from '@/lib/metaPixel';
 import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
 import { PREFERRED_SOURCE, usesPreferredSource } from '@/lib/preferredSource';
 import { turnstileCspOrigin } from '@/lib/turnstile';
@@ -80,6 +81,15 @@ const PUBLIC_PATHS = [
   ...PUBLIC_ENDPOINTS,
 ];
 
+/** GA's origins, plus Meta's when the pixel is configured (one merge, built once). */
+const ANALYTICS_CSP = metaPixelIdValid(META_PIXEL_ID)
+  ? {
+      script: [...GA_CSP.script, ...META_CSP.script],
+      connect: [...GA_CSP.connect, ...META_CSP.connect],
+      img: [...GA_CSP.img, ...META_CSP.img],
+    }
+  : GA_CSP;
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -111,8 +121,10 @@ export async function proxy(request: NextRequest) {
     // the policy of the page the reader started on (lib/turnstile.ts says why).
     turnstileOrigin: turnstileCspOrigin(),
     // Google Analytics' documented origins, on every page for the same reason.
-    // The tag itself only loads on the live host (lib/analytics.ts).
-    analytics: GA_CSP,
+    // The tag itself only loads on the live host (lib/analytics.ts). The Meta pixel's
+    // origins join them only while a pixel id is configured, so with none set the
+    // policy is byte-identical to before (lib/metaPixel.ts).
+    analytics: ANALYTICS_CSP,
   });
 
   // The nonce reaches the renderer on the REQUEST, not the response: Next parses

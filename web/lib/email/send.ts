@@ -29,6 +29,12 @@ export interface SendBrandEmailInput {
    * user-action emails (account/referral/contact), which fire once per click.
    */
   idempotencyKey?: string;
+  /**
+   * Optional ISO 8601 time for Resend to send it later (its `scheduled_at`). Used by
+   * the one welcome email, which arrives the day after the first sign-in rather than
+   * on top of the confirmation email.
+   */
+  scheduledAt?: string;
 }
 
 /**
@@ -75,6 +81,7 @@ export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolea
         subject: input.subject,
         text: input.text,
         html,
+        ...(input.scheduledAt ? { scheduled_at: input.scheduledAt } : {}),
       }),
     });
     if (!res.ok) {

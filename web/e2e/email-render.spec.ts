@@ -11,6 +11,7 @@ import {
 import { renewalTimeZone } from '@/lib/billing/accessEmails';
 import { sendDeletionScheduledEmail, sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
+import { sendWelcomeEmail } from '@/lib/email/welcomeEmail';
 import { sendContact } from '@/app/(public)/contact/actions';
 import { formatCharge } from '@/lib/pricing';
 import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
@@ -83,6 +84,7 @@ const NAMES = [
   'deletionScheduled',
   'accountDeleted',
   'referral',
+  'welcome',
 ] as const;
 
 type MailName = (typeof NAMES)[number];
@@ -132,7 +134,13 @@ async function renderAll(): Promise<Record<MailName, Captured>> {
     });
     await sendAccountDeletedEmail({ to: 'x@example.com', name: 'Ayaat' });
     await sendReferralEmail({ to: 'friend@example.com', referrerName: 'Ayaat', message: 'Have a look' });
+    // The welcome email sends only from PRODUCTION and never to a reserved test domain,
+    // so it is rendered as production with an ordinary address. fetch is stubbed above:
+    // nothing leaves the machine.
+    process.env.VERCEL_ENV = 'production';
+    await sendWelcomeEmail({ to: 'reader@majorcycle-render-test.com', name: 'Ayaat', userId: 'u-1' });
   } finally {
+    delete process.env.VERCEL_ENV;
     globalThis.fetch = realFetch;
   }
 

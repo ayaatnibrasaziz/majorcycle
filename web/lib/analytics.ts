@@ -1,3 +1,5 @@
+import { trackMeta } from '@/lib/metaPixel';
+
 /**
  * Google Analytics 4 — what it may see, and the one place that says so.
  *
@@ -125,7 +127,12 @@ const KEPT_PARAMS = [
  * link would not be counted at all on that page. Anything NOT on either list — a
  * token, a code, a Stripe session id — still keeps the tag from loading.
  */
-const GATE_ALSO_ALLOWS = ['next', 'error'];
+// `fbclid`: Meta appends it to EVERY ad click (2026-11-27, Philippines campaign). Without
+// it here the landing page of every Meta ad would load neither tag, and the visit that
+// matters most would be the one never counted. It is an ad-click id, not a person; the
+// Meta pixel needs it in the raw address to credit the click (lib/metaPixel.ts), and
+// `cleanLocation` still never forwards it to Google.
+const GATE_ALSO_ALLOWS = ['next', 'error', 'fbclid'];
 
 /**
  * The address Google is allowed to see: origin + path + utm tags. Never the rest of
@@ -207,7 +214,33 @@ export type AnalyticsEvent =
   | 'refer_friend'
   | 'generate_lead'
   | 'account_deletion_requested'
-  | 'film_sound_on';
+  | 'film_sound_on'
+  // Added 2026-11-27 so the funnel can be read end to end (Philippines campaign). Google's
+  // RECOMMENDED names where one fits, so its standard reports pick them up unaided:
+  //   view_item       a Stock Detail page (items[0] = the ticker; GA's item reports)
+  //   search          a stock found through a search box (search_term = the TICKER
+  //                   chosen, never the words typed)
+  //   select_content  a sign-up / sign-in / pricing link (content_type 'cta')
+  // and our own for the rest:
+  | 'view_item'
+  | 'search'
+  | 'select_content'
+  | 'filter_results'
+  | 'read_article'
+  | 'view_section'
+  | 'ui_click'
+  | 'form_error';
+
+/**
+ * A form error as a short, safe label for `form_error`: the message WE show (our own
+ * copy, via friendlyAuthError), cut to 80 characters — or 'other' if it could carry a
+ * reader's data (an email address, a long number), which a passed-through provider
+ * message in principle might.
+ */
+export function formErrorReason(message: string): string {
+  if (message.includes('@') || /\d{6,}/.test(message)) return 'other';
+  return message.replace(/\s+/g, ' ').trim().slice(0, 80) || 'other';
+}
 
 type Params = Record<string, string | number | boolean | Array<Record<string, string | number>>>;
 
@@ -224,7 +257,15 @@ function gtag(): Gtag | null {
  * host, before the reader's first page has set it up, or with a blocker installed —
  * so a caller never has to ask.
  */
-export function track(event: AnalyticsEvent, params: Params = {}): void {
+export function track(
+  event: AnalyticsEvent,
+  params: Params = {},
+  opts: { metaEventId?: string } = {},
+): void {
+  // Meta hears a handful of these (lib/metaPixel.ts decides which); it guards itself.
+  // `metaEventId` goes to Meta ONLY: it pairs a browser event with the same event sent
+  // from our server, so Meta counts it once (lib/metaServer.ts). Google never sees it.
+  trackMeta(event, params, opts.metaEventId);
   try {
     const g = gtag();
     if (g) {

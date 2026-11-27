@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import type { Market } from '@/lib/types';
 import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 import { adoptEarlyInput } from '@/lib/useHydrated';
@@ -72,6 +73,7 @@ export function TickerSearchAdd({
   }, []);
 
   const add = (ticker: string) => {
+    track('search', { search_term: ticker, location: 'run' });
     onAdd(ticker);
     setQuery('');
     setHits([]);

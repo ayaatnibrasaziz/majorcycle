@@ -145,7 +145,7 @@
 
   <header class="doc">
     <h1>MajorCycle — Transactional email templates</h1>
-    <p>Every email MajorCycle sends, rendered exactly as it arrives. <strong>Part 1</strong> is the eleven the app sends itself; <strong>Part 2</strong> is the thirteen Supabase sends for signing in; <strong>Part 3</strong> is the one alert the system sends to us. Twenty-five in all, in one house style.</p>
+    <p>Every email MajorCycle sends, rendered exactly as it arrives. <strong>Part 1</strong> is the twelve the app sends itself; <strong>Part 2</strong> is the thirteen Supabase sends for signing in; <strong>Part 3</strong> is the one alert the system sends to us. Twenty-six in all, in one house style.</p>
   </header>
 
   <div class="meta-note">
@@ -170,7 +170,7 @@
       </div>
       <div>
         <p class="setup-k">Who delivers it</p>
-        <p><strong>Resend</strong>, for all twenty-five. The app calls its API directly;
+        <p><strong>Resend</strong>, for all twenty-six. The app calls its API directly;
           Supabase hands its finished messages to the same account over SMTP. So every email
           leaves from <code>noreply@majorcycle.com</code> — except the contact-form
           notification, which comes from the monitored <code>support@</code> inbox and can be
@@ -178,7 +178,7 @@
       </div>
       <div>
         <p class="setup-k">Where the wording lives</p>
-        <p>All twenty-five are built by <code>renderBrandEmail()</code> in
+        <p>All twenty-six are built by <code>renderBrandEmail()</code> in
           <code>web/lib/email/brandEmail.ts</code>, so they share one header, one body style
           and one footer. Part 1 and Part 3 are sent by the app. The thirteen in Part 2 are
           written in <code>web/lib/email/authTemplates.ts</code>, built into
@@ -188,7 +188,7 @@
       </div>
       <div>
         <p class="setup-k">What that means in practice</p>
-        <p>Part 1 is covered by <code>e2e/email-render.spec.ts</code>, which renders all eleven
+        <p>Part 1 is covered by <code>e2e/email-render.spec.ts</code>, which renders all twelve
           on every build and checks their links, their figures and this footer.
           <code>e2e/auth-email-templates.spec.ts</code> checks the Part 2 files against their
           source. <strong>Nothing can check the dashboard itself</strong>: after changing a
@@ -209,15 +209,15 @@
           <code>security@</code> receives the authentication reports.</p>
       </div>
     </div>
-    <p class="setup-foot">The footer line is identical in all twenty-five:
+    <p class="setup-foot">The footer line is identical in all twenty-six:
       <code>&copy; MajorCycle &middot; Educational information only &mdash; not financial
-      advice.</code> It carries no year on purpose — thirteen of the twenty-five are static
-      templates that cannot compute one, and a year would be right in twelve places and frozen
+      advice.</code> It carries no year on purpose — thirteen of the twenty-six are static
+      templates that cannot compute one, and a year would be right in thirteen places and frozen
       in thirteen.</p>
   </div>
 
   <div class="part-head">
-    <h2>Part 1 &mdash; the eleven the app sends</h2>
+    <h2>Part 1 &mdash; the twelve the app sends</h2>
     <p>Composed in this repository and sent through Resend&rsquo;s API. Sample names, dates
       and addresses are illustrative; everything else is what production renders.</p>
   </div>
@@ -945,6 +945,74 @@
     <div class="note"><b>Annual plans only</b>, once per renewal (keyed on the subscription and its renewal date). <b>Not sent</b> to a monthly plan, a trial, a failed payment, a plan already set not to renew (cancelled, or the account is being deleted), or an account with a payment dispute open. The amount is the upcoming invoice as Stripe calculated it, never our price list; with no figure the &ldquo;for &hellip;&rdquo; part is left out. The date is written in the plan currency&rsquo;s zone (A$ &rarr; Sydney, C$ &rarr; Toronto, US$ &rarr; New York), so an Australian reader is not told a date one day early. Shown: <span class="variant">A$159.00, renewing 12 March 2027</span>. Added 2026-10-07: until then nobody was warned before a yearly charge.</div>
   </section>
 
+  <!-- ============================================================= 12 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">12</span>
+      <div>
+        <p class="mail-title">Welcome (where to start)</p>
+        <p class="mail-purpose">The one welcome email: the Learn articles that explain how to use the product, and one button to try the full ratings.</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">First sign-in (the write-once disclaimer acknowledgement); scheduled to send 24 hours later. Production only, never to a reserved test domain</td></tr>
+      <tr><td class="k">From</td><td class="v">noreply@majorcycle.com</td></tr>
+      <tr><td class="k">To</td><td class="v">The new account&rsquo;s email</td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>Welcome to MajorCycle — where to start</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">Welcome to MajorCycle</td></tr>
+      <tr><td class="k">Plain text</td><td class="v">Every Learn article&rsquo;s link and summary, /account for the trial, and /contact. The article list is read from <code>LEARN_ARTICLES</code>, so it changes with the library</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/lib/email/welcomeEmail.ts</code></td></tr>
+    </table>
+    <div class="inbox">
+      <div class="inbox-bar">Subject: Welcome to MajorCycle — where to start &nbsp;&mdash;&nbsp; from noreply@majorcycle.com</div>
+      <!--EMAIL:welcome-->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">How to read a rating, and the short articles that explain the ideas behind it.</div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+          <tr>
+            <td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td style="vertical-align:middle;padding:0 14px 0 0;">
+                    <img src="https://www.majorcycle.com/email-icon.png" width="37" height="44" alt="MajorCycle" style="display:block;height:44px;width:37px;border:0;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <img src="https://www.majorcycle.com/email-wordmark.png" width="116" height="24" alt="MajorCycle" style="display:block;height:24px;width:116px;border:0;color:#ffffff;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:19px;font-weight:700;" />
+                    <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">Welcome to MajorCycle</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 28px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f1923;">
+<p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Hi Maria,</p>
+<p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Thanks for joining MajorCycle. Here is the short version of how to get the most out of it, and where to read more when you want the detail.</p>
+<p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;"><strong>Start here</strong></p>
+<ul style="margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.6;color:#0f1923;"><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/how-to-read-a-majorcycle-rating" style="color:#1E5CB3;text-decoration:underline;">How to read a MajorCycle rating</a> — What the three parts measure, how they are weighted, what the five labels mean, and the questions the rating deliberately refuses to answer.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/what-majorcycle-doesnt-do" style="color:#1E5CB3;text-decoration:underline;">What MajorCycle deliberately doesn’t do</a> — The limits that are design decisions rather than gaps: no forecasts, no timing, nothing that is not a number, and why leaving them in place is the point.</li></ul>
+<p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;"><strong>The ideas behind the ratings</strong></p>
+<ul style="margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.6;color:#0f1923;"><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/what-is-a-drawdown" style="color:#1E5CB3;text-decoration:underline;">What is a drawdown?</a> — What a drawdown is, which peak it is measured from, and what counts as a normal drawdown for a stock — judged against that company’s own record.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/dip-correction-crash" style="color:#1E5CB3;text-decoration:underline;">Dip, correction, crash — what’s the difference?</a> — The three words explained, where their round numbers actually came from, and why a threshold built for an index tells you almost nothing about one company.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/52-week-high" style="color:#1E5CB3;text-decoration:underline;">What a 52-week high really tells you</a> — What the number is, why a closing-price chart never quite reaches the high everyone quotes, and why it describes one year of prices rather than a company.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/own-history-vs-market-average" style="color:#1E5CB3;text-decoration:underline;">Why your company’s own history beats the market’s average</a> — Why an index falls less than its own members, what a typical fall means for one company, and when a company’s own record is the wrong record to read.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/how-long-do-recoveries-take" style="color:#1E5CB3;text-decoration:underline;">How long do recoveries actually take?</a> — Reading the length of a company’s past recoveries off its own chart, why a fall’s depth does not predict how long it lasts, and why we publish no average.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/falling-price-bargain-or-warning" style="color:#1E5CB3;text-decoration:underline;">Is a falling share price a bargain or a warning?</a> — Why a lower price is not the same as good value, and the five checks that tell a bad year apart from a business that is genuinely getting worse.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/pe-ratio" style="color:#1E5CB3;text-decoration:underline;">What a P/E ratio does and doesn’t tell you</a> — What the ratio measures, why no single number is good or bad, the three ways it misleads, and the difference between the trailing and forward versions.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/is-a-company-financially-healthy" style="color:#1E5CB3;text-decoration:underline;">How to check if a company is financially healthy</a> — The numbers behind each of the five checks, what good looks like, and why one healthy-looking score can hide two completely different risks.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/analyst-price-target" style="color:#1E5CB3;text-decoration:underline;">How to read an analyst price target</a> — Where the number comes from, why the spread matters more than the consensus, and why targets follow the price rather than lead it.</li><li style="margin:0 0 8px;"><a href="https://www.majorcycle.com/learn/is-a-dividend-safe" style="color:#1E5CB3;text-decoration:underline;">Is a dividend safe, and how would you know?</a> — Why a rising yield is often a warning, the four things that decide whether a payment lasts, and what the stock page shows you about each.</li></ul>
+<p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Once you're ready, you can see a stock's full rating and Verdict, and run the screener across a whole market. Try it free for 7 days.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr><td bgcolor="#1E5CB3" style="border-radius:8px;"><a href="https://www.majorcycle.com/account" style="display:inline-block;padding:11px 24px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Try it free for 7 days</a></td></tr></table>
+<p style="margin:16px 0 0;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.6;color:#64748b;">This is a one-off welcome email. MajorCycle is educational analysis, not financial advice. Questions? Get in touch at <a href="https://www.majorcycle.com/contact" style="color:#1E5CB3;text-decoration:underline;">majorcycle.com/contact</a>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
+              <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#5a6675;line-height:1.5;">
+                &copy; MajorCycle &middot; Educational information only &mdash; not financial advice.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+    </div>
+  </section>
+
 <div class="part-head">
     <h2>Part 2 &mdash; the thirteen Supabase sends</h2>
     <p>Written in <code>web/lib/email/authTemplates.ts</code> with the same wrapper and
@@ -975,7 +1043,7 @@
   </div>
 
   <div class="meta-note">
-    <strong>One layout for all twenty-five, since 2026-10-13.</strong> Until then these
+    <strong>One layout for all twenty-six, since 2026-10-13.</strong> Until then these
     thirteen had drifted from Part 1: slate-grey body text, a fine-print grey too faint to
     read (2.56:1), a different button, a 480px card for six of them and the title in the
     body. The owner saw the difference in a real inbox. They now share Part 1&rsquo;s 600px

@@ -94,15 +94,21 @@ export function planFromLookupKey(lookupKey: string | null | undefined): PlanKey
 }
 
 // ── Currency (fixed per subscription by country) ─────────────────────────────
-export type BillingCurrency = 'usd' | 'aud' | 'cad';
+export type BillingCurrency = 'usd' | 'aud' | 'cad' | 'php';
 
-/** AU→aud, CA→cad, everyone-else→usd (locked decision). Input is ISO-3166 alpha-2. */
+/**
+ * AU→aud, CA→cad, PH→php, everyone-else→usd. Input is ISO-3166 alpha-2.
+ * PH was added 2026-11-27 (owner decision) for the Philippines launch: a local price
+ * at roughly the US$5 / US$15 level, shown in pesos so it reads as built for them.
+ */
 export function currencyForCountry(country: string | null | undefined): BillingCurrency {
   switch (country?.toUpperCase()) {
     case 'AU':
       return 'aud';
     case 'CA':
       return 'cad';
+    case 'PH':
+      return 'php';
     default:
       return 'usd';
   }

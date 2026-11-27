@@ -46,6 +46,10 @@ export const PRICE_TABLE: Record<BillingCurrency, PlanPrices> = {
   usd: { monthly: 15, annual: 126 },
   aud: { monthly: 19, annual: 159 },
   cad: { monthly: 20, annual: 168 },
+  // Philippines (owner decision 2026-11-27): about US$5 a month and US$15 a year, in
+  // pesos. Deliberately NOT the ~30% annual discount the other three carry — the
+  // annual plan is three months' price, chosen to make the yearly plan the easy yes.
+  php: { monthly: 299, annual: 899 },
 };
 
 /** Symbol shown in front of the amount (kept distinct so US$/A$/C$ never blur together). */
@@ -53,6 +57,7 @@ export const CURRENCY_SYMBOL: Record<BillingCurrency, string> = {
   usd: 'US$',
   aud: 'A$',
   cad: 'C$',
+  php: '₱',
 };
 
 /**
@@ -76,6 +81,7 @@ export const CURRENCY_CODE_LABEL: Record<BillingCurrency, string> = {
   usd: 'USD',
   aud: 'AUD',
   cad: 'CAD',
+  php: 'PHP',
 };
 
 /**

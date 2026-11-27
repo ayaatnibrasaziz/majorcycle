@@ -11,7 +11,7 @@ import { AgreeToTerms } from '@/components/AgreeToTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { track } from '@/lib/analytics';
+import { formErrorReason, track } from '@/lib/analytics';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL, safeNextPath } from '@/lib/url';
@@ -66,12 +66,13 @@ export function SignupForm() {
     e.preventDefault();
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
+      track('form_error', { form: 'signup', reason: 'password_too_short' });
       return;
     }
     setLoading(true);
     setError(null);
     const supabase = createBrowserClient();
-    const { error: authError } = await supabase.auth.signUp({
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -83,10 +84,15 @@ export function SignupForm() {
       // The token is spent; a retry needs a fresh one. Only on failure — on
       // success the form is replaced (see LoginForm for why that matters).
       captcha.renew();
-      setError(friendlyAuthError(authError.message));
+      const message = friendlyAuthError(authError.message);
+      setError(message);
+      track('form_error', { form: 'signup', reason: formErrorReason(message) });
       setLoading(false);
     } else {
-      track('sign_up', { method: 'email' });
+      // `reg_<user id>` pairs this with the server's copy at first sign-in, so Meta
+      // counts the registration once (lib/metaPixel.ts). Google never sees the id.
+      const id = data.user?.id;
+      track('sign_up', { method: 'email' }, id ? { metaEventId: `reg_${id}` } : {});
       setSent(true);
     }
   }
